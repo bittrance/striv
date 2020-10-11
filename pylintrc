@@ -1,0 +1,3 @@
+[MASTER]
+extension-pkg-whitelist=_jsonnet
+disable=global-statement,invalid-name,missing-module-docstring,wildcard-import

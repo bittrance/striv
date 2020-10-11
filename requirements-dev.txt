@@ -1,0 +1,7 @@
+-r requirements.txt
+autopep8
+pyhamcrest
+pylint
+pytest
+requests
+webtest
