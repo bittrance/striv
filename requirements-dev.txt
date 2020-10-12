@@ -3,5 +3,5 @@ autopep8
 pyhamcrest
 pylint
 pytest
-requests
+requests_mock
 webtest
