@@ -72,3 +72,9 @@ class TestCreateJob:
         assert striv_app.backend.actions == [
             ('sync', {'some': 'config'}, eid, '"ze_template"\n')
         ]
+
+    def test_create_job_rejects_invalid_input_with_detailed_error(self, app):
+        invalid_job = A_JOB.copy()
+        invalid_job.update({'gunk': False})
+        response = app.post_json('/jobs', invalid_job, status=422)
+        assert response.json == {'gunk': ['Unknown field.']}

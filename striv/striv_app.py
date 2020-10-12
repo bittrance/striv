@@ -1,9 +1,12 @@
 # pylint: disable = unsubscriptable-object
 
 import uuid
+from argparse import ArgumentParser
 
-from bottle import Bottle, request
-from . import templating
+import json
+import marshmallow
+from bottle import Bottle, HTTPResponse, request
+from striv import schemas, templating
 
 app = Bottle()
 
@@ -11,13 +14,31 @@ backend = None
 store = None
 
 
+def marshmallow_validation(func):
+    '''
+    Translate marshmallow validation errors to 422s
+    '''
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except marshmallow.ValidationError as err:
+            return HTTPResponse(
+                body=json.dumps(err.messages),
+                status=422,
+                headers={'Content-type': 'application/json'}
+            )
+    return wrapper
+
+
+app.install(marshmallow_validation)
+
+
 @app.post('/jobs')
 def create_job():
     '''
     Create a new job. Returns a json object with the uuid of the job.
     '''
-    job = request.json
-    # TODO: validate against schema
+    job = schemas.Job().load(request.json)
     selected_dimensions = job['dimensions']
     execution, *dimensions = store.load_entities(
         ('execution', job['execution']),
