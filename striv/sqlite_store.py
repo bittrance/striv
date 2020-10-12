@@ -53,3 +53,19 @@ def store_entity(typ, eid, entity):
     '''
     insert = 'INSERT INTO entities (typed_id, entity) VALUES (?, ?)'
     _cursor().execute(insert, ['%s:%s' % (typ, eid), json.dumps(entity)])
+
+
+def replace_type(typ, entities):
+    '''
+    Drop all entities of one type, and replace them with the provided
+    list.
+    '''
+    delete_res = _cursor().execute(
+        'DELETE FROM entities WHERE typed_id LIKE ?',
+        [typ + ':%']
+    )
+    insert = 'INSERT INTO entities (typed_id, entity) VALUES (?, ?)'
+    rows = (('%s:%s' % (typ, eid), json.dumps(entity))
+            for (eid, entity) in entities.items())
+    insert_res = _cursor().executemany(insert, rows)
+    return (delete_res.rowcount, insert_res.rowcount)

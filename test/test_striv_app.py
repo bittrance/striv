@@ -78,3 +78,40 @@ class TestCreateJob:
         invalid_job.update({'gunk': False})
         response = app.post_json('/jobs', invalid_job, status=422)
         assert response.json == {'gunk': ['Unknown field.']}
+
+
+@pytest.mark.usefixtures('basicdb')
+class TestLoadState:
+    def test_load_state_dimensions(self, app):
+        state = {
+            'dimensions': {
+                'another-maturity': A_DIMENSION
+            },
+        }
+        response = app.post_json('/state', state)
+        assert response.json == {'dimensions': {'deleted': 1, 'inserted': 1}}
+        assert_that(
+            calling(sqlite_store.load_entities)
+            .with_args(('dimension', 'maturity')),
+            raises(KeyError)
+        )
+        assert sqlite_store.load_entities(
+            ('dimension', 'another-maturity')
+        ) == [A_DIMENSION]
+
+    def test_load_state_executions(self, app):
+        state = {
+            'executions': {
+                'another-execution': AN_EXECUTION
+            },
+        }
+        response = app.post_json('/state', state)
+        assert response.json == {'executions': {'deleted': 1, 'inserted': 1}}
+        assert_that(
+            calling(sqlite_store.load_entities)
+            .with_args(('execution', 'nomad')),
+            raises(KeyError)
+        )
+        assert sqlite_store.load_entities(
+            ('execution', 'another-execution')
+        ) == [AN_EXECUTION]

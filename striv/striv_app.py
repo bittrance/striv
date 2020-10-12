@@ -64,3 +64,30 @@ def create_job():
     backend.sync_job(execution['driver_config'], eid, payload)
     store.store_entity('job', eid, job)
     return {'id': eid}
+
+
+@app.post('/state')
+def load_state():
+    '''
+    Replace all executions and/or dimensions in the state with those
+    passed in. The payload is supposed to be a json object on the format
+    {"executions": [{...}, ...], "dimensions": [{...}, ...]}. Include
+    only the types that you want to replace. The load operation is
+    guaranteed to be atomic, but not instantaneous (i.e. other endpoints may
+    temporarily 500).
+    '''
+    state = schemas.State().load(request.json)
+    changes = {}
+    if 'dimensions' in state.keys():
+        deleted, inserted = store.replace_type(
+            'dimension',
+            state['dimensions']
+        )
+        changes['dimensions'] = {'deleted': deleted, 'inserted': inserted}
+    if 'executions' in state.keys():
+        deleted, inserted = store.replace_type(
+            'execution',
+            state['executions']
+        )
+        changes['executions'] = {'deleted': deleted, 'inserted': inserted}
+    return changes
