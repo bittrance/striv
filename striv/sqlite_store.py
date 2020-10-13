@@ -2,7 +2,7 @@ import json
 import sqlite3
 
 ENTITY_TABLE_DEF = '''
-CREATE TABLE entities (
+CREATE TABLE IF NOT EXISTS entities (
     typed_id TEXT,
     entity TEXT
 )
@@ -21,8 +21,8 @@ def setup(database=':memory:'):
     '''
     global CONN
     CONN = sqlite3.connect(database)
-    if database == ':memory:':
-        _cursor().execute(ENTITY_TABLE_DEF)
+    CONN.isolation_level = None
+    _cursor().execute(ENTITY_TABLE_DEF)
 
 
 def load_entities(*query):

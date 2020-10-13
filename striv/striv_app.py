@@ -91,3 +91,29 @@ def load_state():
         )
         changes['executions'] = {'deleted': deleted, 'inserted': inserted}
     return changes
+
+
+def main():
+    '''
+    Developer entrypoint.
+    '''
+    parser = ArgumentParser(
+        description='Start striv with auto reload and debug')
+    parser.add_argument('--bottle-host', default='localhost',
+                        help="'0.0.0.0' for ALL interfaces")
+    parser.add_argument('--bottle-port', default=8080)
+    parser.add_argument('--database', default=':memory:',
+                        help="SQLite db file")
+    args = parser.parse_args()
+
+    from striv import nomad_backend, sqlite_store  # pylint: disable = import-outside-toplevel
+    global store, backend
+    store = sqlite_store
+    backend = nomad_backend
+    store.setup(database=args.database)
+    app.run(host=args.bottle_host, reloader=True,
+            port=args.bottle_port, debug=True)
+
+
+if __name__ == '__main__':
+    main()
