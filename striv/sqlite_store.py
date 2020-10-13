@@ -47,6 +47,18 @@ def load_entities(*query):
     return entities
 
 
+def find_entities(typ):
+    '''
+    Retrieve all entities of a particular type. Returns a dict
+    mapping id to entity.
+    '''
+    result = _cursor().execute(
+        'SELECT typed_id, entity FROM entities WHERE typed_id LIKE ?',
+        ['%s:%%' % typ]
+    )
+    return dict((typed_id[len(typ) + 1:], json.loads(entity)) for (typed_id, entity) in result)
+
+
 def store_entity(typ, eid, entity):
     '''
     Store an entity in the store. Entity is any jsonable value.

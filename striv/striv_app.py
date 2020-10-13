@@ -33,6 +33,14 @@ def marshmallow_validation(func):
 app.install(marshmallow_validation)
 
 
+@app.get('/jobs')
+def list_jobs():
+    '''
+    Retrieve a list of jobs. Returns a dict mapping id to entity.
+    '''
+    return store.find_entities('job')
+
+
 @app.post('/jobs')
 def create_job():
     '''
@@ -64,6 +72,20 @@ def create_job():
     backend.sync_job(execution['driver_config'], eid, payload)
     store.store_entity('job', eid, job)
     return {'id': eid}
+
+
+@app.get('/state')
+def dump_state():
+    '''
+    Returns a json object with all config level information suitable for
+    posting to /state. The dump is guaranteed to be internally
+    consistent and in order to guarantee this, writes may fail during
+    dumping.
+    '''
+    return {
+        'dimensions': store.find_entities('dimension'),
+        'executions': store.find_entities('execution')
+    }
 
 
 @app.post('/state')

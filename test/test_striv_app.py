@@ -57,6 +57,15 @@ def basicdb():
     sqlite_store.store_entity('dimension', 'maturity', A_DIMENSION)
 
 
+class TestListJobs:
+    def test_list_jobs(self, app):
+        sqlite_store.setup()
+        sqlite_store.store_entity('job', 'job-1', A_JOB)
+        sqlite_store.store_entity('job', 'job-2', A_JOB)
+        response = app.get('/jobs')
+        assert response.json == {'job-1': A_JOB, 'job-2': A_JOB}
+
+
 @pytest.mark.usefixtures('basicdb')
 class TestCreateJob:
     def test_create_job_stores_the_job(self, app):
@@ -78,6 +87,22 @@ class TestCreateJob:
         invalid_job.update({'gunk': False})
         response = app.post_json('/jobs', invalid_job, status=422)
         assert response.json == {'gunk': ['Unknown field.']}
+
+
+@pytest.mark.usefixtures('basicdb')
+class TestDumpState:
+    def test_dump_state(self, app):
+        assert app.get('/state').json == {
+            'dimensions': {'maturity': A_DIMENSION},
+            'executions': {'nomad': AN_EXECUTION}
+        }
+
+    def test_roundtrip(self, app):
+        state = app.get('/state').json
+        assert app.post_json('/state', state).json == {
+            'dimensions': {'deleted': 1, 'inserted': 1},
+            'executions': {'deleted': 1, 'inserted': 1}
+        }
 
 
 @pytest.mark.usefixtures('basicdb')
