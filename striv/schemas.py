@@ -15,7 +15,6 @@ class Dimension(Schema):
     '''
     One dimension including all its possible value definitions.
     '''
-    name = fields.String(required=True)
     priority = fields.Number(required=True)
     values = fields.Dict(
         keys=fields.String(validate=dimension_name_validation),

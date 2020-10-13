@@ -53,9 +53,9 @@ def create_job():
         *[('dimension', name) for name in selected_dimensions.keys()]
     )
     selected_params = []
-    for (v, d) in zip(selected_dimensions.values(), dimensions):
+    for ((k, v), d) in zip(selected_dimensions.items(), dimensions):
         selected_params.append(
-            (d['priority'], d['name'], d['values'][v]['params'])
+            (d['priority'], k, d['values'][v]['params'])
         )
     selected_params.sort()
     params_snippet = templating.merge_layers(

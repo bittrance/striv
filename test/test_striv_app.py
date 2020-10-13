@@ -17,7 +17,6 @@ AN_EXECUTION = {
 }
 
 A_DIMENSION = {
-    'name': 'maturity',
     'priority': 10,
     'values': {
         'operational': {
