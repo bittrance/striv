@@ -5,13 +5,22 @@ from argparse import ArgumentParser
 
 import json
 import marshmallow
-from bottle import Bottle, HTTPResponse, request
+from bottle import Bottle, HTTPResponse, request, response
 from striv import schemas, templating
 
 app = Bottle()
 
 backend = None
 store = None
+
+
+def cors_headers(func):
+    '''
+    '''
+    def wrapper(*args, **kwargs):
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return func(*args, **kwargs)
+    return wrapper
 
 
 def marshmallow_validation(func):
@@ -30,6 +39,7 @@ def marshmallow_validation(func):
     return wrapper
 
 
+app.install(cors_headers)
 app.install(marshmallow_validation)
 
 
