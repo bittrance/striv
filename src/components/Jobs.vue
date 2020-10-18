@@ -1,19 +1,23 @@
 <template>
-  <table class="jobs">
-    <tbody>
-      <tr v-for="[id, job] in jobs" :key="id">
-        <td>{{ job.name }}</td>
-        <td>
-          <span
-            class="dimensions"
-            v-for="[dim, val] in Object.entries(job.dimensions)"
-            :key="dim"
-            >{{ dim }}={{ val }}</span
-          >
-        </td>
-      </tr>
-    </tbody>
-  </table>
+  <div>
+    <h1>Jobs</h1>
+    <table class="jobs">
+      <tbody>
+        <tr v-for="[id, job] in jobs" :key="id">
+          <td>{{ job.name }}</td>
+          <td>
+            <span
+              class="dimensions"
+              v-for="[dim, val] in Object.entries(job.dimensions || {})"
+              :key="dim"
+              >{{ dim }}={{ val }}</span
+            >
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <router-link to="/jobs/new">New job</router-link>
+  </div>
 </template>
 
 <script>
