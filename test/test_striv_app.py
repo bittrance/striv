@@ -28,9 +28,6 @@ A_DIMENSION = {
 A_JOB = {
     'name': 'ze-name',
     'execution': 'nomad',
-    'dimensions': {
-            'maturity': 'operational',
-    }
 }
 
 

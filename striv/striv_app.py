@@ -57,7 +57,7 @@ def create_job():
     Create a new job. Returns a json object with the uuid of the job.
     '''
     job = schemas.Job().load(request.json)
-    selected_dimensions = job['dimensions']
+    selected_dimensions = job.get('dimensions', {})
     execution, *dimensions = store.load_entities(
         ('execution', job['execution']),
         *[('dimension', name) for name in selected_dimensions.keys()]
