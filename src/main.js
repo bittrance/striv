@@ -15,7 +15,7 @@ const store = createStore({
     },
     actions: {
         async load_jobs({ commit }) {
-            const response = await fetch('http://localhost:8081/jobs')
+            const response = await fetch('/api/jobs')
             const jobs = await response.json()
             commit('load_jobs', jobs)
         }
