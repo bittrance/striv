@@ -1,10 +1,14 @@
 <template>
-  <div>
-    <h1>Jobs</h1>
-    <table class="jobs">
+  <div class="px-3 py-3">
+    <table class="table table-hover">
+      <thead>
+        <th scope="col">Name</th>
+        <th scope="col">Dimensions</th>
+      </thead>
+
       <tbody>
         <tr v-for="[id, job] in jobs" :key="id">
-          <td>{{ job.name }}</td>
+          <th scope="row">{{ job.name }}</th>
           <td>
             <span
               class="dimensions"
@@ -16,7 +20,6 @@
         </tr>
       </tbody>
     </table>
-    <router-link to="/jobs/new">New job</router-link>
   </div>
 </template>
 

@@ -1,28 +1,25 @@
 <template>
-  <form class="job" @submit="create_job">
-    <h1>Create a new job</h1>
-    <p v-if="error">
+  <form @submit="create_job" class="py-3 px-3">
+    <p v-if="error" style="color: red">
       Validation errors:
-      <ul> 
+      <ul>
         <li v-for="[field, message] in Object.entries(error)" :key="field">
-          <span>{{ field }}</span>
-          <span>{{ message[0] }}</span>
+          <span>{{ field }}: {{ message[0] }}</span>
         </li>
       </ul>
     </p>
-    <p>
-      <label for="name">Name</label>
-      <input id="name" type="text" v-model="name" />
-    </p>
-    <p>
-      <label for="execution">Execution</label>
-      <select id="execution" v-model="execution">
+    <div class="form-group">
+      <input id="name" type="text" placeholder="Job name" class="form-control" v-model="name" />
+    </div>
+    <div class="form-group">
+      <select id="execution" class="custom-select" required v-model="execution">
+        <option :value="null" hidden disabled>Select exection</option>
         <option :value="id" v-for="[id, execution] in executions" :key="id">
           {{ execution.name }}
         </option>
       </select>
-    </p>
-    <input type="submit" value="Create" />
+    </div>
+    <input type="submit" class="btn btn-primary" value="Create" />
   </form>
 </template>
 

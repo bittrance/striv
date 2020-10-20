@@ -1,5 +1,20 @@
 <template>
-  <router-view />
+  <div>
+    <h1>striv</h1>
+    <ul class="nav nav-tabs">
+      <li class="nav-item ml-3">
+        <router-link to="/" class="nav-link" active-class="active"
+          >Jobs</router-link
+        >
+      </li>
+      <li class="nav-item">
+        <router-link to="/jobs/new" class="nav-link" active-class="active"
+          >New job</router-link
+        >
+      </li>
+    </ul>
+    <router-view />
+  </div>
 </template>
 
 <script>
@@ -8,13 +23,3 @@ export default {
 };
 </script>
 
-<style>
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: left;
-  color: #2c3e50;
-  margin-top: 60px;
-}
-</style>
