@@ -40,14 +40,23 @@ def materialize_layer(name, params):
 class ValidationError(Exception):
     'Error thrown when validating jsonnet templates'
 
+    def __init__(self, source, message):
+        super(ValidationError, self).__init__(message)
+        self.source = source
+        self.message = message
+
+
+def _evaluate(name, snippet):
+    try:
+        return _jsonnet.evaluate_snippet(name, snippet)
+    except RuntimeError as exc:
+        raise ValidationError(  # pylint: disable = raise-missing-from
+            snippet, *exc.args)
+
 
 def _validate(layer, *layers):
     name1, snippet1 = layer
-    try:
-        _jsonnet.evaluate_snippet(name1, snippet1)
-    except RuntimeError as exc:
-        raise ValidationError(  # pylint: disable = raise-missing-from
-            snippet1, *exc.args)
+    _evaluate(name1, snippet1)
     if len(layers) > 0:
         name2, snippet2 = layers[0]
         _validate((name2, '%s + %s' % (snippet1, snippet2)), *layers[1:])
@@ -68,4 +77,4 @@ def evaluate(template, params_snippet):
     Evaluate a template against some params. Returns a json string.
     '''
     snippet = '(function(params) %s)(%s)' % (template, params_snippet)
-    return _jsonnet.evaluate_snippet('template', snippet)
+    return _evaluate('payload_template', snippet)

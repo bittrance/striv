@@ -82,7 +82,16 @@ class TestCreateJob:
         invalid_job = A_JOB.copy()
         invalid_job.update({'gunk': False})
         response = app.post_json('/jobs', invalid_job, status=422)
-        assert response.json == {'gunk': ['Unknown field.']}
+        assert response.json['invalid-fields'] == {'gunk': ['Unknown field.']}
+
+    def test_create_job_rejects_broken_template_with_detailed_error(self, app):
+        bad_execution = AN_EXECUTION.copy()
+        bad_execution.update({'payload_template': '"foo'})
+        sqlite_store.store_entity('execution', 'bad_nomad', bad_execution)
+        job = A_JOB.copy()
+        job.update({'execution': 'bad_nomad'})
+        response = app.post_json('/jobs', job, status=422)
+        assert_that(response.json['detail'], matches_regexp('unterminated'))
 
 
 @pytest.mark.usefixtures('basicdb')

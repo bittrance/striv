@@ -9,7 +9,8 @@
         {
           Config: {
             image: 'alpine:latest',
-            command: 'echo Hello', // params.command
+            command: '/bin/sh',
+            args: ['-c', 'echo "' + params.greeting + '"'],
           },
           Driver: 'docker',
           Name: 'testo',

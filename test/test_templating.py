@@ -63,3 +63,15 @@ def test_evaluate():
     param_snippet = '{prip: 1}'
     payload = templating.evaluate(template, param_snippet)
     assert _compact_json(payload) == '{"prip": 2}'
+
+
+def test_evaluate_compains_on_invalid_snippet():
+    template = '{prip: "}'
+    assert_that(
+        calling(templating.evaluate)
+        .with_args(template, '{}'),
+        raises(templating.ValidationError,
+               matching=has_properties(
+                   source=matches_regexp('prip'),
+                   message=matches_regexp('unterminated string')))
+    )

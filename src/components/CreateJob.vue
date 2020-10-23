@@ -1,13 +1,6 @@
 <template>
   <form @submit="create_job" class="py-3 px-3">
-    <p v-if="error" style="color: red">
-      Validation errors:
-      <ul>
-        <li v-for="[field, message] in Object.entries(error)" :key="field">
-          <span>{{ field }}: {{ message[0] }}</span>
-        </li>
-      </ul>
-    </p>
+    <ValidationErrors v-if="error" v-bind:error="error" />
     <div class="form-group">
       <input id="name" type="text" placeholder="Job name" class="form-control" v-model="name" />
     </div>
@@ -31,10 +24,12 @@
 <script>
 import { useToast } from "vue-toastification";
 import ParamsEditor from "./ParamsEditor.vue";
+import ValidationErrors from "./ValidationErrors.vue";
 export default {
   name: "CreateJob",
   components: {
     ParamsEditor,
+    ValidationErrors,
   },
   computed: {
     dimensions() {

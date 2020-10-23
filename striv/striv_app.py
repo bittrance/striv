@@ -32,7 +32,30 @@ def marshmallow_validation(func):
             return func(*args, **kwargs)
         except marshmallow.ValidationError as err:
             return HTTPResponse(
-                body=json.dumps(err.messages),
+                body=json.dumps({
+                    'title': 'Invalid fields',
+                    'invalid-fields': err.messages
+                }),
+                status=422,
+                headers={'Content-type': 'application/json'}
+            )
+    return wrapper
+
+
+def templating_validation(func):
+    '''
+    Translate templating validation errors to 422s
+    '''
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except templating.ValidationError as err:
+            return HTTPResponse(
+                body=json.dumps({
+                    'title': 'jsonnet template evaluation failed',
+                    'detail': err.message,
+                    'source': err.source
+                }),
                 status=422,
                 headers={'Content-type': 'application/json'}
             )
@@ -41,22 +64,10 @@ def marshmallow_validation(func):
 
 app.install(cors_headers)
 app.install(marshmallow_validation)
+app.install(templating_validation)
 
 
-@app.get('/jobs')
-def list_jobs():
-    '''
-    Retrieve a list of jobs. Returns a dict mapping id to entity.
-    '''
-    return store.find_entities('job')
-
-
-@app.post('/jobs')
-def create_job():
-    '''
-    Create a new job. Returns a json object with the uuid of the job.
-    '''
-    job = schemas.Job().load(request.json)
+def _job_to_payload(job):
     selected_dimensions = job.get('dimensions', {})
     execution, *dimensions = store.load_entities(
         ('execution', job['execution']),
@@ -74,10 +85,27 @@ def create_job():
           for (_, name, params) in selected_params],
         templating.materialize_layer(job['name'], job.get('params', {}))
     )
-    payload = templating.evaluate(
+    return execution, templating.evaluate(
         execution['payload_template'],
         params_snippet
     )
+
+
+@app.get('/jobs')
+def list_jobs():
+    '''
+    Retrieve a list of jobs. Returns a dict mapping id to entity.
+    '''
+    return store.find_entities('job')
+
+
+@app.post('/jobs')
+def create_job():
+    '''
+    Create a new job. Returns a json object with the uuid of the job.
+    '''
+    job = schemas.Job().load(request.json)
+    execution, payload = _job_to_payload(job)
     eid = str(uuid.uuid4())
     backend.sync_job(execution['driver_config'], eid, payload)
     store.store_entity('job', eid, job)
