@@ -63,6 +63,22 @@ class TestListJobs:
 
 
 @pytest.mark.usefixtures('basicdb')
+class TestEvaluateJob:
+    def test_evaluate_job(self, app):
+        response = app.post_json('/jobs/evaluate', A_JOB)
+        assert response.json == {'payload': '"ze_template"\n'}
+
+    def test_evaluate_job_explains_why_template_is_invalid(self, app):
+        bad_execution = AN_EXECUTION.copy()
+        bad_execution.update({'payload_template': '"foo'})
+        sqlite_store.store_entity('execution', 'bad_nomad', bad_execution)
+        job = A_JOB.copy()
+        job.update({'execution': 'bad_nomad'})
+        response = app.post_json('/jobs/evaluate', job, status=422)
+        assert_that(response.json['detail'], matches_regexp('unterminated'))
+
+
+@pytest.mark.usefixtures('basicdb')
 class TestCreateJob:
     def test_create_job_stores_the_job(self, app):
         response = app.post_json('/jobs', A_JOB)

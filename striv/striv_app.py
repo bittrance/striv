@@ -112,6 +112,16 @@ def create_job():
     return {'id': eid}
 
 
+@app.post('/jobs/evaluate')
+def evaluate_job():
+    '''
+    Evaluates a job definition, verifying that it is complete. Returns
+    the payload for debugging.
+    '''
+    job = schemas.Job().load(request.json)
+    return {'payload': _job_to_payload(job)[1]}
+
+
 @app.get('/state')
 def dump_state():
     '''

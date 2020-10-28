@@ -2,7 +2,13 @@
   <form @submit="create_job" class="py-3 px-3">
     <ValidationErrors v-if="error" v-bind:error="error" />
     <div class="form-group">
-      <input id="name" type="text" placeholder="Job name" class="form-control" v-model="name" />
+      <input
+        id="name"
+        type="text"
+        placeholder="Job name"
+        class="form-control"
+        v-model="name"
+      />
     </div>
     <div class="form-group">
       <select id="execution" class="custom-select" required v-model="execution">
@@ -16,8 +22,12 @@
     <ParamsEditor
       v-bind:params="params"
       @add-param="add_param"
-      @delete-param="delete_param" />
+      @delete-param="delete_param"
+    />
     <input type="submit" class="btn btn-primary" value="Create" />
+    <router-link to="/jobs/preview" class="btn btn-secondary mx-3">
+      Preview</router-link
+    >
   </form>
 </template>
 
@@ -38,14 +48,32 @@ export default {
     executions() {
       return Object.entries(this.$store.state.executions);
     },
+    job() {
+      return {
+        name: this.name,
+        execution: this.execution,
+        params: this.params,
+      };
+    },
   },
   data() {
-    return {
-      name: null,
-      execution: null,
-      params: {},
-      error: null,
-    };
+    return Object.assign(
+      {
+        name: null,
+        execution: null,
+        params: {},
+        error: null,
+      },
+      this.$store.state.current_job
+    );
+  },
+  watch: {
+    job: {
+      deep: true,
+      handler: function (job) {
+        this.$store.dispatch("current_job", JSON.parse(JSON.stringify(job)));
+      },
+    },
   },
   setup() {
     return { toast: useToast() };
@@ -59,11 +87,7 @@ export default {
       await fetch("/api/jobs", {
         method: "POST",
         headers: { "Content-type": "application/json" },
-        body: JSON.stringify({
-          name: this.name,
-          execution: this.execution,
-          params: this.params,
-        }),
+        body: JSON.stringify(this.job),
       })
         .then(async (response) => {
           const result = await response.json();
