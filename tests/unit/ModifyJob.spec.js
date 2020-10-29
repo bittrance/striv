@@ -1,6 +1,6 @@
 import fetchMock from 'fetch-mock-jest'
 import { mount } from '@vue/test-utils'
-import CreateJob from '@/components/CreateJob.vue'
+import ModifyJob from '@/components/ModifyJob.vue'
 
 const MockRouterLink = {
     name: 'router-link',
@@ -8,7 +8,7 @@ const MockRouterLink = {
     template: 'hello',
 }
 
-describe('CreateJob', () => {
+describe('ModifyJob', () => {
     let $store = {
         state: {
             dimensions: {},
@@ -28,13 +28,13 @@ describe('CreateJob', () => {
     beforeEach(() => fetchMock.mockReset())
 
     it('requests state on mounting', async () => {
-        let wrapper = mount(CreateJob, options)
+        let wrapper = mount(ModifyJob, options)
         await wrapper.vm.$nextTick()
         expect($store.dispatch).toHaveBeenCalledWith('load_state')
     })
 
     it('updates the store when execution changes', async () => {
-        let wrapper = mount(CreateJob, options)
+        let wrapper = mount(ModifyJob, options)
         await wrapper.find('#execution').setValue('ze-execution')
         expect($store.dispatch).toHaveBeenCalledWith(
             'current_job',
@@ -43,7 +43,7 @@ describe('CreateJob', () => {
     })
 
     it('updates the store when params change', async () => {
-        let wrapper = mount(CreateJob, options)
+        let wrapper = mount(ModifyJob, options)
         wrapper.findComponent({ name: 'ParamsEditor' })
             .vm.$emit('add-param', 'this', 'that')
         await wrapper.vm.$nextTick()
@@ -55,7 +55,7 @@ describe('CreateJob', () => {
 
     it('creates job on submit', async () => {
         fetchMock.post('path:/api/jobs', { id: 'ze-id' })
-        let wrapper = mount(CreateJob, options)
+        let wrapper = mount(ModifyJob, options)
         await wrapper.find('#name').setValue('ze-name')
         await wrapper.find('form').trigger('submit')
         expect(fetchMock).toHaveFetched((url, req) => {

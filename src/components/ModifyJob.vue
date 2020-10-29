@@ -36,7 +36,7 @@ import { useToast } from "vue-toastification";
 import ParamsEditor from "./ParamsEditor.vue";
 import ValidationErrors from "./ValidationErrors.vue";
 export default {
-  name: "CreateJob",
+  name: "modify-job",
   components: {
     ParamsEditor,
     ValidationErrors,
