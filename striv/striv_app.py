@@ -4,6 +4,9 @@ import uuid
 from argparse import ArgumentParser
 
 import json
+import logging
+import sys
+
 import marshmallow
 from bottle import Bottle, HTTPResponse, request, response
 from striv import schemas, templating
@@ -12,6 +15,12 @@ app = Bottle()
 
 backend = None
 store = None
+logger = logging.getLogger('striv')
+handler = logging.StreamHandler(sys.stderr)
+handler.setFormatter(logging.Formatter(
+    '%(asctime)s  [%(levelname)s] %(message)s')
+)
+logger.addHandler(handler)
 
 
 def cors_headers(func):
@@ -31,6 +40,7 @@ def marshmallow_validation(func):
         try:
             return func(*args, **kwargs)
         except marshmallow.ValidationError as err:
+            logger.info('Input validation failed [err=%s]', err)
             return HTTPResponse(
                 body=json.dumps({
                     'title': 'Invalid fields',
@@ -50,6 +60,7 @@ def templating_validation(func):
         try:
             return func(*args, **kwargs)
         except templating.ValidationError as err:
+            logger.info('Template evaluation failed [err=%s]', err)
             return HTTPResponse(
                 body=json.dumps({
                     'title': 'jsonnet template evaluation failed',
@@ -174,7 +185,11 @@ def main():
     parser.add_argument('--bottle-port', default=8080)
     parser.add_argument('--database', default=':memory:',
                         help="SQLite db file")
+    parser.add_argument('--log-level', default='WARNING',
+                        help='One of DEBUG, INFO, WARNING or ERROR')
     args = parser.parse_args()
+
+    logger.setLevel(args.log_level)
 
     from striv import nomad_backend, sqlite_store  # pylint: disable = import-outside-toplevel
     global store, backend
