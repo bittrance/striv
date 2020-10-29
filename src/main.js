@@ -6,14 +6,14 @@ import "vue-toastification/dist/index.css";
 
 import App from './App.vue'
 import ModifyJob from './components/ModifyJob.vue'
-import Jobs from './components/Jobs.vue'
+import ListJobs from './components/ListJobs.vue'
 import PreviewPayload from '@/components/PreviewPayload.vue'
 import store from '@/store.js'
 
 const router = createRouter({
     history: createWebHashHistory(),
     routes: [
-        { path: "/", component: Jobs },
+        { path: "/", component: ListJobs },
         { path: "/jobs/new", component: ModifyJob },
         { path: "/jobs/preview", component: PreviewPayload },
     ]

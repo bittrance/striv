@@ -25,7 +25,7 @@
 
 <script>
 export default {
-  name: "Jobs",
+  name: "list-jobs",
   computed: {
     jobs() {
       return Object.entries(this.$store.state.jobs);
