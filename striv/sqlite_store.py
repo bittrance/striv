@@ -3,7 +3,7 @@ import sqlite3
 
 ENTITY_TABLE_DEF = '''
 CREATE TABLE IF NOT EXISTS entities (
-    typed_id TEXT,
+    typed_id TEXT PRIMARY KEY,
     entity TEXT
 )
 '''
@@ -59,11 +59,15 @@ def find_entities(typ):
     return dict((typed_id[len(typ) + 1:], json.loads(entity)) for (typed_id, entity) in result)
 
 
-def store_entity(typ, eid, entity):
+def upsert_entity(typ, eid, entity):
     '''
-    Store an entity in the store. Entity is any jsonable value.
+    Store an entity in the store, overwriting any previous entity with
+    the same eid. Entity is any jsonable value.
     '''
-    insert = 'INSERT INTO entities (typed_id, entity) VALUES (?, ?)'
+    insert = '''
+    INSERT INTO entities (typed_id, entity) VALUES (?, ?)
+    ON CONFLICT(typed_id) DO UPDATE SET entity = excluded.entity
+    '''
     _cursor().execute(insert, ['%s:%s' % (typ, eid), json.dumps(entity)])
 
 

@@ -102,6 +102,12 @@ def _job_to_payload(job):
     )
 
 
+def _apply_job(job_id, job):
+    execution, payload = _job_to_payload(job)
+    backend.sync_job(execution['driver_config'], job_id, payload)
+    store.upsert_entity('job', job_id, job)
+
+
 @app.get('/jobs')
 def list_jobs():
     '''
@@ -116,11 +122,9 @@ def create_job():
     Create a new job. Returns a json object with the uuid of the job.
     '''
     job = schemas.Job().load(request.json)
-    execution, payload = _job_to_payload(job)
-    eid = str(uuid.uuid4())
-    backend.sync_job(execution['driver_config'], eid, payload)
-    store.store_entity('job', eid, job)
-    return {'id': eid}
+    job_id = str(uuid.uuid4())
+    _apply_job(job_id, job)
+    return {'id': job_id}
 
 
 @app.post('/jobs/evaluate')
@@ -131,6 +135,32 @@ def evaluate_job():
     '''
     job = schemas.Job().load(request.json)
     return {'payload': _job_to_payload(job)[1]}
+
+
+@app.get('/job/:job_id')
+def get_job(job_id):
+    '''
+    Retrieve a single job definition.
+    '''
+    try:
+        return store.load_entities(('job', job_id))[0]
+    except KeyError:
+        return HTTPResponse(status=404)
+
+
+@app.put('/job/:job_id')
+def put_job(job_id):
+    '''
+    Update an existing job definition. This method cannot be used to
+    create new jobs.
+    '''
+    try:
+        store.load_entities(('job', job_id))[0]
+    except KeyError:
+        return HTTPResponse(status=404)
+    job = schemas.Job().load(request.json)
+    _apply_job(job_id, job)
+    return {'id': job_id}
 
 
 @app.get('/state')
