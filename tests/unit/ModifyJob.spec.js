@@ -1,28 +1,14 @@
 import fetchMock from 'fetch-mock-jest'
 import { mount } from '@vue/test-utils'
+import { mount_options } from '../utils'
 import ModifyJob from '@/components/ModifyJob.vue'
 
-const MockRouterLink = {
-    name: 'router-link',
-    props: ['to', 'class'],
-    template: 'hello',
-}
-
 describe('ModifyJob', () => {
-    let $store = {
-        state: {
-            dimensions: {},
-            executions: { 'ze-execution': {} },
-            current_job: {},
-        },
-        dispatch: jest.fn()
-    }
-    let options = {
-        global: {
-            components: { 'router-link': MockRouterLink },
-            mocks: { $store },
-        }
-    }
+    let { options, $store } = mount_options({
+        dimensions: {},
+        executions: { 'ze-execution': {} },
+        current_job: {},
+    })
 
     beforeEach(() => $store.dispatch.mockReset())
     beforeEach(() => fetchMock.mockReset())
