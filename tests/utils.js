@@ -5,6 +5,8 @@ const MockRouterLink = {
 }
 
 export function mount_options(state) {
+    let $route = { params: {} }
+    let $router = { push: jest.fn() }
     let $store = {
         state: state,
         dispatch: jest.fn()
@@ -12,9 +14,9 @@ export function mount_options(state) {
     let options = {
         global: {
             components: { 'router-link': MockRouterLink },
-            mocks: { $store }
+            mocks: { $route, $router, $store }
         }
     }
-    return { options, $store }
+    return { options, $route, $router, $store }
 
 }

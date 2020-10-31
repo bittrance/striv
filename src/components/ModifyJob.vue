@@ -35,6 +35,18 @@
 import { useToast } from "vue-toastification";
 import ParamsEditor from "./ParamsEditor.vue";
 import ValidationErrors from "./ValidationErrors.vue";
+function store_param(param, defaultValue) {
+  return {
+    get() {
+      return this.$store.state.current_job[param] || defaultValue;
+    },
+    set(value) {
+      let job = JSON.parse(JSON.stringify(this.$store.state.current_job));
+      job[param] = value;
+      this.$store.dispatch("current_job", job);
+    },
+  };
+}
 export default {
   name: "modify-job",
   components: {
@@ -48,47 +60,28 @@ export default {
     executions() {
       return Object.entries(this.$store.state.executions);
     },
-    job() {
-      return {
-        name: this.name,
-        execution: this.execution,
-        params: this.params,
-      };
-    },
+    name: store_param("name"),
+    execution: store_param("execution"),
+    params: store_param("params", {}),
   },
   data() {
-    return Object.assign(
-      {
-        name: null,
-        execution: null,
-        params: {},
-        error: null,
-      },
-      this.$store.state.current_job
-    );
-  },
-  watch: {
-    job: {
-      deep: true,
-      handler: function (job) {
-        this.$store.dispatch("current_job", JSON.parse(JSON.stringify(job)));
-      },
-    },
+    return {
+      error: null,
+    };
   },
   setup() {
     return { toast: useToast() };
   },
   methods: {
     add_param(name, value) {
-      this.params[name] = value;
+      let new_params = Object.assign({}, this.params);
+      new_params[name] = value;
+      this.params = new_params;
     },
     async create_job(event) {
       event.preventDefault();
-      await fetch("/api/jobs", {
-        method: "POST",
-        headers: { "Content-type": "application/json" },
-        body: JSON.stringify(this.job),
-      })
+      this.$store
+        .dispatch("store_current_job")
         .then(async (response) => {
           const result = await response.json();
           if (response.ok) {
@@ -97,7 +90,6 @@ export default {
             });
             this.$router.push({ path: "/" });
           } else {
-            console.log(result);
             this.error = result;
           }
         })
@@ -106,7 +98,9 @@ export default {
         });
     },
     delete_param(name) {
-      delete this.params[name];
+      let new_params = Object.assign({}, this.params);
+      delete new_params[name];
+      this.params = new_params;
     },
   },
   mounted() {
