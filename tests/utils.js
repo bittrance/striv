@@ -9,6 +9,7 @@ export function mount_options(state) {
     let $router = { push: jest.fn() }
     let $store = {
         state: state,
+        commit: jest.fn(),
         dispatch: jest.fn()
     }
     let options = {

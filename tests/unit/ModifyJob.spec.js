@@ -3,18 +3,29 @@ import { mount_options } from '../utils'
 import ModifyJob from '@/components/ModifyJob.vue'
 
 describe('ModifyJob', () => {
-    let { options, $router, $store } = mount_options({
+    let options, $route, $router, $store
+
+    beforeEach(() => ({ options, $route, $router, $store } = mount_options({
         dimensions: {},
         executions: { 'ze-execution': {} },
         current_job: {},
-    })
-
-    beforeEach(() => $store.dispatch.mockReset())
+    })))
 
     it('requests state on mounting', async () => {
         let wrapper = mount(ModifyJob, options)
         await wrapper.vm.$nextTick()
         expect($store.dispatch).toHaveBeenCalledWith('load_state')
+    })
+
+    it('requests the store to unset the job id (i.e. enter create mode)', () => {
+        mount(ModifyJob, options)
+        expect($store.commit).toHaveBeenCalledWith('current_job_id', undefined)
+    })
+
+    it('has a create button in create mode', () => {
+        let wrapper = mount(ModifyJob, options)
+        let button = wrapper.find('[type="submit"]')
+        expect(button.element.value).toEqual('Create')
     })
 
     it('updates the store when execution changes', async () => {
@@ -35,6 +46,24 @@ describe('ModifyJob', () => {
             'current_job',
             expect.objectContaining({ params: { this: 'that' } })
         )
+    })
+
+    describe('when invoked with an existing job', () => {
+        beforeEach(() => {
+            $route.params.job_id = 'job-1'
+            $store.state.current_job_id = 'job-1'
+        })
+
+        it('requests the store to load the job', () => {
+            let wrapper = mount(ModifyJob, options)
+            expect($store.dispatch).toHaveBeenCalledWith('load_job', 'job-1')
+        })
+
+        it('has a modify button', () => {
+            let wrapper = mount(ModifyJob, options)
+            let button = wrapper.find('[type="submit"]')
+            expect(button.element.value).toEqual('Modify')
+        })
     })
 
     describe('on submit', () => {

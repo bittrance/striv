@@ -24,7 +24,18 @@
       @add-param="add_param"
       @delete-param="delete_param"
     />
-    <input type="submit" class="btn btn-primary" value="Create" />
+    <input
+      type="submit"
+      class="btn btn-primary"
+      value="Create"
+      v-if="is_create"
+    />
+    <input
+      type="submit"
+      class="btn btn-primary"
+      value="Modify"
+      v-if="!is_create"
+    />
     <router-link to="/jobs/preview" class="btn btn-secondary mx-3">
       Preview</router-link
     >
@@ -54,6 +65,9 @@ export default {
     ValidationErrors,
   },
   computed: {
+    is_create() {
+      return this.$store.state.current_job_id == undefined;
+    },
     dimensions() {
       return Object.entries(this.$store.state.dimensions);
     },
@@ -72,11 +86,25 @@ export default {
   setup() {
     return { toast: useToast() };
   },
+  mounted() {
+    this.$store.dispatch("load_state");
+    this.current_job();
+  },
+  watch: {
+    $route: "current_job",
+  },
   methods: {
     add_param(name, value) {
       let new_params = Object.assign({}, this.params);
       new_params[name] = value;
       this.params = new_params;
+    },
+    current_job() {
+      if (this.$route.params.job_id) {
+        this.$store.dispatch("load_job", this.$route.params.job_id);
+      } else {
+        this.$store.commit("current_job_id", undefined);
+      }
     },
     async create_job(event) {
       event.preventDefault();
@@ -85,9 +113,15 @@ export default {
         .then(async (response) => {
           const result = await response.json();
           if (response.ok) {
-            this.toast.success(`New job created: ${result.id}`, {
-              timeout: 3000,
-            });
+            if (this.is_create) {
+              this.toast.success(`New job created: ${result.id}`, {
+                timeout: 3000,
+              });
+            } else {
+              this.toast.success(`Job updated: ${result.id}`, {
+                timeout: 3000,
+              });
+            }
             this.$router.push({ path: "/" });
           } else {
             this.error = result;
@@ -102,9 +136,6 @@ export default {
       delete new_params[name];
       this.params = new_params;
     },
-  },
-  mounted() {
-    this.$store.dispatch("load_state");
   },
 };
 </script>

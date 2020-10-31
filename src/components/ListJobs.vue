@@ -4,11 +4,14 @@
       <thead>
         <th scope="col">Name</th>
         <th scope="col">Dimensions</th>
+        <th scope="col" />
       </thead>
 
       <tbody>
         <tr v-for="[id, job] in jobs" :key="id">
-          <th scope="row">{{ job.name }}</th>
+          <th scope="row">
+            {{ job.name }}
+          </th>
           <td>
             <span
               class="dimensions"
@@ -16,6 +19,11 @@
               :key="dim"
               >{{ dim }}={{ val }}</span
             >
+          </td>
+          <td class="text-right">
+            <router-link v-bind:to="'/job/' + id"
+              ><i class="fas fa-edit text-secondary"></i
+            ></router-link>
           </td>
         </tr>
       </tbody>

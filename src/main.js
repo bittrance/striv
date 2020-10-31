@@ -16,6 +16,7 @@ const router = createRouter({
         { path: "/", component: ListJobs },
         { path: "/jobs/new", component: ModifyJob },
         { path: "/jobs/preview", component: PreviewPayload },
+        { path: "/job/:job_id", component: ModifyJob },
     ]
 })
 
