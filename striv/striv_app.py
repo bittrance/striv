@@ -13,7 +13,7 @@ from striv import schemas, templating
 
 app = Bottle()
 
-backend = None
+backends = {}
 store = None
 logger = logging.getLogger('striv')
 handler = logging.StreamHandler(sys.stderr)
@@ -104,6 +104,7 @@ def _job_to_payload(job):
 
 def _apply_job(job_id, job):
     execution, payload = _job_to_payload(job)
+    backend = backends[execution['driver']]
     backend.sync_job(execution['driver_config'], job_id, payload)
     store.upsert_entity('job', job_id, job)
 
@@ -222,9 +223,9 @@ def main():
     logger.setLevel(args.log_level)
 
     from striv import nomad_backend, sqlite_store  # pylint: disable = import-outside-toplevel
-    global store, backend
+    global store, backends
     store = sqlite_store
-    backend = nomad_backend
+    backends['nomad'] = nomad_backend
     store.setup(database=args.database)
     app.run(host=args.bottle_host, reloader=True,
             port=args.bottle_port, debug=True)

@@ -40,9 +40,14 @@ class RecordingBackend:
 
 
 @pytest.fixture()
-def app():
+def backend():
+    return RecordingBackend()
+
+
+@pytest.fixture()
+def app(backend):
     striv_app.store = sqlite_store
-    striv_app.backend = RecordingBackend()
+    striv_app.backends['nomad'] = backend
     return webtest.TestApp(striv_app.app)
 
 
@@ -87,10 +92,10 @@ class TestCreateJob:
         created_job, *_ = sqlite_store.load_entities(('job', eid))
         assert A_JOB == created_job
 
-    def test_create_job_invokes_backend(self, app):
+    def test_create_job_invokes_backend(self, app, backend):
         response = app.post_json('/jobs', A_JOB)
         eid = response.json['id']
-        assert striv_app.backend.actions == [
+        assert backend.actions == [
             ('sync', {'some': 'config'}, eid, '"ze_template"\n')
         ]
 
@@ -130,10 +135,10 @@ class TestPutJob:
             '/job/job-1', updated_job).json == {'id': 'job-1'}
         assert sqlite_store.load_entities(('job', 'job-1'))[0] == updated_job
 
-    def test_put_job_invokes_backend(self, app):
+    def test_put_job_invokes_backend(self, app, backend):
         sqlite_store.upsert_entity('job', 'job-1', A_JOB)
         app.put_json('/job/job-1', A_JOB)
-        assert striv_app.backend.actions == [
+        assert backend.actions == [
             ('sync', {'some': 'config'}, 'job-1', '"ze_template"\n')
         ]
 
