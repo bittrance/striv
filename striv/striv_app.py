@@ -164,6 +164,38 @@ def put_job(job_id):
     return {'id': job_id}
 
 
+@app.post('/runs/refresh-all')
+def refresh_runs():
+    '''
+    Request run updates from all backend systems. Runs will be created
+    and updated as necessary. Returns metrics on created and updated
+    runs.
+    '''
+    identities = {}
+    for execution in store.find_entities('execution').values():
+        backend = backends[execution['driver']]
+        identity = backend.namespace_identity(
+            execution['driver_config']
+        )
+        identities[identity] = (backend, execution['driver_config'])
+    jobs = store.find_entities('job')
+    total_runs = 0
+    for (_backend, driver_config) in identities.values():
+        # TODO: An upsert_entities would be nice
+        for run_id, run in _backend.fetch_runs(driver_config, jobs).items():
+            store.upsert_entity('run', run_id, run)
+            total_runs += 1
+    return {'processed': total_runs}
+
+
+@app.get('/runs')
+def list_runs():
+    '''
+    Retrieve runs.
+    '''
+    return store.find_entities('run')
+
+
 @app.get('/state')
 def dump_state():
     '''

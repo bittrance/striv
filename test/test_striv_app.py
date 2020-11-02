@@ -1,4 +1,4 @@
-# pylint: disable = missing-class-docstring, missing-function-docstring, no-self-use, redefined-outer-name
+# pylint: disable = missing-class-docstring, missing-function-docstring, no-self-use, redefined-outer-name, too-few-public-methods
 import bottle
 import pytest
 import webtest
@@ -30,13 +30,25 @@ A_JOB = {
     'execution': 'nomad',
 }
 
+A_RUN = {
+    'job_id': 'job-1'
+}
+
 
 class RecordingBackend:
     def __init__(self):
         self.actions = []
+        self.runs = {}
+
+    def namespace_identity(self, driver_config):
+        return hash(str(driver_config))
 
     def sync_job(self, driver_config, jid, payload):
         self.actions.append(('sync', driver_config, jid, payload))
+
+    def fetch_runs(self, _, job_ids):
+        self.actions.append(('refresh-runs', job_ids))
+        return self.runs
 
 
 @pytest.fixture()
@@ -151,6 +163,26 @@ class TestPutJob:
         invalid_job.update({'gunk': False})
         response = app.put_json('/job/job-1', invalid_job, status=422)
         assert response.json['invalid-fields'] == {'gunk': ['Unknown field.']}
+
+
+@pytest.mark.usefixtures('basicdb')
+class TestRefreshRuns:
+    def test_creates_runs_for_all_executions(self, app, backend):
+        sqlite_store.upsert_entity('job', 'job-1', A_JOB)
+        backend.runs['alloc-1'] = A_RUN
+        response = app.post('/runs/refresh-all')
+        runs = sqlite_store.find_entities('run')
+        assert_that(runs['alloc-1'], has_entry('job_id', 'job-1'))
+        assert response.json == {'processed': 1}
+
+
+class TestListRuns:
+    def test_list_runs(self, app):
+        sqlite_store.setup()
+        sqlite_store.upsert_entity('run', 'alloc-1', A_RUN)
+        sqlite_store.upsert_entity('run', 'alloc-2', A_RUN)
+        response = app.get('/runs')
+        assert response.json == {'alloc-1': A_RUN, 'alloc-2': A_RUN}
 
 
 @pytest.mark.usefixtures('basicdb')

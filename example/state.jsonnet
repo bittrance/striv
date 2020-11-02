@@ -39,6 +39,15 @@
         debug: true
       },
       payload_template: importstr 'nomad_template.jsonnet'
+    },
+    'periodic_nomad': {
+      name: 'Periodic Nomad',
+      driver: 'nomad',
+      driver_config: {
+        nomad_url: 'http://localhost:4646'
+      },
+      default_params: { },
+      payload_template: importstr 'nomad_periodic.jsonnet'
     }
   }
 }
