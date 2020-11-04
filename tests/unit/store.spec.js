@@ -2,8 +2,16 @@ import fetchMock from 'fetch-mock-jest'
 import store from '@/store.js'
 
 describe('actions', () => {
-    let job = { name: 'ze-name', execution: 'ze-execution' }
     let evaluation = { payload: { some: 'payload' } }
+    let job = { name: 'ze-name', execution: 'ze-execution' }
+    let run1 = {
+        status: 'pending'
+    }
+    let run2 = {
+        status: 'successful',
+        started_at: '2020-10-31T23:40:00+0000',
+        finished_at: '2020-10-31T23:40:05+0000',
+    }
 
     beforeEach(() => fetchMock.mockReset())
 
@@ -52,6 +60,32 @@ describe('actions', () => {
                 await store.actions.store_current_job(tools)
                 expect(fetchMock).toHaveFetched()
             })
+        })
+    })
+
+    describe('load_runs', () => {
+        let commit
+
+        beforeEach(async () => {
+            commit = jest.fn()
+            fetchMock.get('path:/api/runs', { 'run-1': run1, 'run-2': run2 })
+            fetchMock.get('path:/api/jobs', { 'job-1': job })
+            await store.actions.load_runs({ commit })
+        })
+
+        it('loads the runs', () => {
+            expect(commit).toHaveBeenCalledWith(
+                'load_runs',
+                expect.objectContaining({
+                    'run-1': expect.anything(),
+                    'run-2': expect.anything(),
+                })
+            )
+        })
+
+        it('calculates duration for completed jobs', () => {
+            let runs = commit.mock.calls[0][1]
+            expect(runs['run-2']).toHaveProperty('duration', '1m')
         })
     })
 })

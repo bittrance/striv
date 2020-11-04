@@ -4,6 +4,11 @@
     <ul class="nav nav-tabs">
       <li class="nav-item ml-3">
         <router-link to="/" class="nav-link" active-class="active"
+          >Runs</router-link
+        >
+      </li>
+      <li class="nav-item ml-3">
+        <router-link to="/jobs" class="nav-link" active-class="active"
           >Jobs</router-link
         >
       </li>

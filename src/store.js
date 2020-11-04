@@ -1,3 +1,15 @@
+function duration(run) {
+    let delta = (new Date(run.finished_at) - new Date(run.started_at)) / 1000;
+    let hours = Math.floor(delta / 3600);
+    let minutes = Math.ceil((delta % 3600) / 60);
+    let response = `${minutes}m`;
+    if (hours > 0) {
+        response = `${hours}h ${response}`;
+    }
+    return response;
+}
+
+
 export default {
     strict: true,
     state() {
@@ -8,6 +20,7 @@ export default {
             current_job: {},
             current_job_id: null,
             current_job_evaluation: null,
+            runs: {},
         }
     },
     mutations: {
@@ -26,7 +39,10 @@ export default {
         },
         current_job_evaluation(state, evaluation) {
             state.current_job_evaluation = evaluation
-        }
+        },
+        load_runs(state, runs) {
+            state.runs = runs
+        },
     },
     actions: {
         async load_state({ commit }) {
@@ -69,6 +85,16 @@ export default {
                 headers: { "Content-type": "application/json" },
                 body: JSON.stringify(state.current_job),
             });
+        },
+        async load_runs({ commit }) {
+            const response = await fetch('/api/runs')
+            const runs = await response.json()
+            for (const run of Object.values(runs)) {
+                if (run.started_at && run.finished_at) {
+                    run.duration = duration(run)
+                }
+            }
+            commit('load_runs', runs)
         }
     }
 }
