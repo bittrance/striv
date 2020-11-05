@@ -12,7 +12,7 @@
     </div>
     <div class="form-group">
       <select id="execution" class="custom-select" required v-model="execution">
-        <option :value="null" hidden disabled>Select exection</option>
+        <option :value="null" hidden disabled>Select execution</option>
         <option :value="id" v-for="[id, execution] in executions" :key="id">
           {{ execution.name }}
         </option>
@@ -139,3 +139,9 @@ export default {
   },
 };
 </script>
+<style scoped>
+h2 {
+  font-size: 1.4rem;
+  color: rgb(192, 192, 192);
+}
+</style>

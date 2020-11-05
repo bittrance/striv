@@ -2,8 +2,8 @@
   <table class="table table-sm table-responsive">
     <tbody>
       <tr v-for="[name, value] in Object.entries(params)" :key="name">
-        <td class="col-sm-3 px-3">{{ name }}</td>
-        <td class="col-sm-8 px-3">{{ value }}</td>
+        <td class="col-sm-3 px-3 align-middle">{{ name }}</td>
+        <td class="col-sm px-3 align-middle">{{ value }}</td>
         <td class="col-sm-1">
           <button
             type="button"
@@ -23,7 +23,7 @@
             v-model="name"
           />
         </td>
-        <td class="col-sm-8">
+        <td class="col-sm">
           <input
             type="text"
             name="param-value"
