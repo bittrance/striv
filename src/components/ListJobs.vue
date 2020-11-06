@@ -17,7 +17,7 @@
               class="dimensions"
               v-for="[dim, val] in Object.entries(job.dimensions || {})"
               :key="dim"
-              >{{ dim }}={{ val }}</span
+              >{{ dim }}={{ val }}&nbsp;</span
             >
           </td>
           <td class="text-right">

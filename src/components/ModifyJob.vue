@@ -18,6 +18,13 @@
         </option>
       </select>
     </div>
+    <h2>Dimensions</h2>
+    <dimensions-selector
+      v-bind:available="available_dimensions"
+      v-bind:selected="dimensions"
+      @add-dimension="add_dimension"
+      @delete-dimension="delete_dimension"
+    />
     <h2>Job-specific parameters</h2>
     <ParamsEditor
       v-bind:params="params"
@@ -44,6 +51,7 @@
 
 <script>
 import { useToast } from "vue-toastification";
+import DimensionsSelector from "@/components/DimensionsSelector.vue";
 import ParamsEditor from "./ParamsEditor.vue";
 import ValidationErrors from "./ValidationErrors.vue";
 function store_param(param, defaultValue) {
@@ -61,6 +69,7 @@ function store_param(param, defaultValue) {
 export default {
   name: "modify-job",
   components: {
+    DimensionsSelector,
     ParamsEditor,
     ValidationErrors,
   },
@@ -68,14 +77,15 @@ export default {
     is_create() {
       return this.$store.state.current_job_id == undefined;
     },
-    dimensions() {
-      return Object.entries(this.$store.state.dimensions);
+    available_dimensions() {
+      return this.$store.state.dimensions;
     },
     executions() {
       return Object.entries(this.$store.state.executions);
     },
     name: store_param("name"),
     execution: store_param("execution"),
+    dimensions: store_param("dimensions", {}),
     params: store_param("params", {}),
   },
   data() {
@@ -94,6 +104,11 @@ export default {
     $route: "current_job",
   },
   methods: {
+    add_dimension(name, value) {
+      let new_selection = Object.assign({}, this.dimensions);
+      new_selection[name] = value;
+      this.dimensions = new_selection;
+    },
     add_param(name, value) {
       let new_params = Object.assign({}, this.params);
       new_params[name] = value;
@@ -130,6 +145,11 @@ export default {
         .catch((err) => {
           this.toast.error(`Oops! ${err.message}`);
         });
+    },
+    delete_dimension(name) {
+      let new_selection = Object.assign({}, this.dimensions);
+      delete new_selection[name];
+      this.dimensions = new_selection;
     },
     delete_param(name) {
       let new_params = Object.assign({}, this.params);
