@@ -12,8 +12,8 @@ def store():
 
 
 def test_roundtrip_sorted(store):
-    store.upsert_entity('job', 'foo', {'id': 'foo'})
-    store.upsert_entity('job', 'bar', {'id': 'bar'})
+    store.upsert_entities(('job', 'foo', {'id': 'foo'}))
+    store.upsert_entities(('job', 'bar', {'id': 'bar'}))
     entities = store.load_entities(('job', 'foo'), ('job', 'bar'))
     assert entities == [{'id': 'foo'}, {'id': 'bar'}]
     entities = store.load_entities(('job', 'bar'), ('job', 'foo'))
@@ -21,8 +21,8 @@ def test_roundtrip_sorted(store):
 
 
 def test_fails_on_missing(store):
-    store.upsert_entity('job', 'foo', {'id': 'foo'})
-    store.upsert_entity('job', 'bar', {'id': 'bar'})
+    store.upsert_entities(('job', 'foo', {'id': 'foo'}))
+    store.upsert_entities(('job', 'bar', {'id': 'bar'}))
     assert_that(
         calling(store.load_entities)
         .with_args(('job', 'foo'), ('job', 'baz')),

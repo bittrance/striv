@@ -106,7 +106,7 @@ def _apply_job(job_id, job):
     execution, payload = _job_to_payload(job)
     backend = backends[execution['driver']]
     backend.sync_job(execution['driver_config'], job_id, payload)
-    store.upsert_entity('job', job_id, job)
+    store.upsert_entities(('job', job_id, job))
 
 
 @app.get('/jobs')
@@ -181,10 +181,9 @@ def refresh_runs():
     jobs = store.find_entities('job')
     total_runs = 0
     for (_backend, driver_config) in identities.values():
-        # TODO: An upsert_entities would be nice
-        for run_id, run in _backend.fetch_runs(driver_config, jobs).items():
-            store.upsert_entity('run', run_id, run)
-            total_runs += 1
+        runs = _backend.fetch_runs(driver_config, jobs).items()
+        store.upsert_entities(*(('run', run_id, run) for run_id, run in runs))
+        total_runs += len(runs)
     return {'processed': total_runs}
 
 

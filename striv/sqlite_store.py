@@ -59,16 +59,19 @@ def find_entities(typ):
     return dict((typed_id[len(typ) + 1:], json.loads(entity)) for (typed_id, entity) in result)
 
 
-def upsert_entity(typ, eid, entity):
+def upsert_entities(*entities):
     '''
-    Store an entity in the store, overwriting any previous entity with
-    the same eid. Entity is any jsonable value.
+    Store entities in the store, overwriting any previous entity with
+    the same eid. Input is a series of (type, id, entity). Entity is any 
+    jsonable value.
     '''
     insert = '''
     INSERT INTO entities (typed_id, entity) VALUES (?, ?)
     ON CONFLICT(typed_id) DO UPDATE SET entity = excluded.entity
     '''
-    _cursor().execute(insert, ['%s:%s' % (typ, eid), json.dumps(entity)])
+    rows = (['%s:%s' % (typ, eid), json.dumps(entity)]
+            for (typ, eid, entity) in entities)
+    _cursor().executemany(insert, rows)
 
 
 def replace_type(typ, entities):

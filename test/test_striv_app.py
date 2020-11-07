@@ -66,15 +66,15 @@ def app(backend):
 @pytest.fixture()
 def basicdb():
     sqlite_store.setup()
-    sqlite_store.upsert_entity('execution', 'nomad', AN_EXECUTION)
-    sqlite_store.upsert_entity('dimension', 'maturity', A_DIMENSION)
+    sqlite_store.upsert_entities(('execution', 'nomad', AN_EXECUTION))
+    sqlite_store.upsert_entities(('dimension', 'maturity', A_DIMENSION))
 
 
 class TestListJobs:
     def test_list_jobs(self, app):
         sqlite_store.setup()
-        sqlite_store.upsert_entity('job', 'job-1', A_JOB)
-        sqlite_store.upsert_entity('job', 'job-2', A_JOB)
+        sqlite_store.upsert_entities(('job', 'job-1', A_JOB))
+        sqlite_store.upsert_entities(('job', 'job-2', A_JOB))
         response = app.get('/jobs')
         assert response.json == {'job-1': A_JOB, 'job-2': A_JOB}
 
@@ -88,7 +88,7 @@ class TestEvaluateJob:
     def test_evaluate_job_explains_why_template_is_invalid(self, app):
         bad_execution = AN_EXECUTION.copy()
         bad_execution.update({'payload_template': '"foo'})
-        sqlite_store.upsert_entity('execution', 'bad_nomad', bad_execution)
+        sqlite_store.upsert_entities(('execution', 'bad_nomad', bad_execution))
         job = A_JOB.copy()
         job.update({'execution': 'bad_nomad'})
         response = app.post_json('/jobs/evaluate', job, status=422)
@@ -120,7 +120,7 @@ class TestCreateJob:
     def test_create_job_rejects_broken_template_with_detailed_error(self, app):
         bad_execution = AN_EXECUTION.copy()
         bad_execution.update({'payload_template': '"foo'})
-        sqlite_store.upsert_entity('execution', 'bad_nomad', bad_execution)
+        sqlite_store.upsert_entities(('execution', 'bad_nomad', bad_execution))
         job = A_JOB.copy()
         job.update({'execution': 'bad_nomad'})
         response = app.post_json('/jobs', job, status=422)
@@ -130,7 +130,7 @@ class TestCreateJob:
 @pytest.mark.usefixtures('basicdb')
 class TestGetJob:
     def test_get_job_retrieves_single_job(self, app):
-        sqlite_store.upsert_entity('job', 'job-1', A_JOB)
+        sqlite_store.upsert_entities(('job', 'job-1', A_JOB))
         assert app.get('/job/job-1').json == A_JOB
 
     def test_get_job_returns_404_on_nonexistent_job(self, app):
@@ -140,7 +140,7 @@ class TestGetJob:
 @pytest.mark.usefixtures('basicdb')
 class TestPutJob:
     def test_put_job_overwrites_single_job(self, app):
-        sqlite_store.upsert_entity('job', 'job-1', A_JOB)
+        sqlite_store.upsert_entities(('job', 'job-1', A_JOB))
         updated_job = A_JOB.copy()
         updated_job['name'] = 'updated'
         assert app.put_json(
@@ -148,7 +148,7 @@ class TestPutJob:
         assert sqlite_store.load_entities(('job', 'job-1'))[0] == updated_job
 
     def test_put_job_invokes_backend(self, app, backend):
-        sqlite_store.upsert_entity('job', 'job-1', A_JOB)
+        sqlite_store.upsert_entities(('job', 'job-1', A_JOB))
         app.put_json('/job/job-1', A_JOB)
         assert backend.actions == [
             ('sync', {'some': 'config'}, 'job-1', '"ze_template"\n')
@@ -158,7 +158,7 @@ class TestPutJob:
         app.put_json('/job/nonsense', {}, status=404)
 
     def test_put_job_rejects_invalid_input_with_detailed_error(self, app):
-        sqlite_store.upsert_entity('job', 'job-1', A_JOB)
+        sqlite_store.upsert_entities(('job', 'job-1', A_JOB))
         invalid_job = A_JOB.copy()
         invalid_job.update({'gunk': False})
         response = app.put_json('/job/job-1', invalid_job, status=422)
@@ -168,7 +168,7 @@ class TestPutJob:
 @pytest.mark.usefixtures('basicdb')
 class TestRefreshRuns:
     def test_creates_runs_for_all_executions(self, app, backend):
-        sqlite_store.upsert_entity('job', 'job-1', A_JOB)
+        sqlite_store.upsert_entities(('job', 'job-1', A_JOB))
         backend.runs['alloc-1'] = A_RUN
         response = app.post('/runs/refresh-all')
         runs = sqlite_store.find_entities('run')
@@ -179,8 +179,8 @@ class TestRefreshRuns:
 class TestListRuns:
     def test_list_runs(self, app):
         sqlite_store.setup()
-        sqlite_store.upsert_entity('run', 'alloc-1', A_RUN)
-        sqlite_store.upsert_entity('run', 'alloc-2', A_RUN)
+        sqlite_store.upsert_entities(('run', 'alloc-1', A_RUN))
+        sqlite_store.upsert_entities(('run', 'alloc-2', A_RUN))
         response = app.get('/runs')
         assert response.json == {'alloc-1': A_RUN, 'alloc-2': A_RUN}
 
