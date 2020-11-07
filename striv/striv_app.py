@@ -210,8 +210,17 @@ def list_runs():
     allows, a Link header is returned which can be used to request the
     next page.
     '''
-    rnge = None
-    if 'page_token' in request.query:
+    rnge = ['desc', None, None]
+    if ('lower' in request.query or 'upper' in request.query):
+        if 'page_token' in request.query:
+            return HTTPResponse(
+                status=400,
+                body=json.dumps({
+                    'title': 'pagination cannot be combined with range'
+                })
+            )
+        rnge = ['desc', request.query.get('lower'), request.query.get('upper')]
+    elif 'page_token' in request.query:
         rnge = _decode_page_token(request.query['page_token'])
     limit = int(request.query.get('limit', DEFAULT_LIMIT))
     limit = min(limit, DEFAULT_LIMIT) + 1
@@ -220,7 +229,7 @@ def list_runs():
     if len(runs) == limit:
         (_, last_run) = runs.popitem()
         response.headers['Link'] = '</runs?page_token=%s>; rel="next"' % (
-            _encode_page_token('desc', last_run['created_at'], None)
+            _encode_page_token('desc', None, last_run['created_at'])
         )
     return runs
 

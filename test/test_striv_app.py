@@ -235,17 +235,31 @@ class TestListRuns:
         assert response.json.keys() == {
             'run-1', 'run-2', 'run-3', 'run-4'}
 
+    def test_accepts_limit_and_returns_youngest_first(self, app):
+        response = app.get('/runs?limit=2')
+        assert response.json.keys() == {'run-3', 'run-4'}
+
     def test_respects_paginates(self, app):
         response = app.get('/runs?limit=2')
-        assert response.json.keys() == {'run-1', 'run-2'}
         assert_that(
             response.headers['link'],
             matches_regexp('<(.*)>; rel="next"')
         )
         url = re.match('<(.*)>; rel="next"', response.headers['link'])[1]
         response = app.get(url + '&limit=2')
-        assert response.json.keys() == {'run-3', 'run-4'}
+        assert response.json.keys() == {'run-1', 'run-2'}
         assert not response.headers.get('link')
+
+    def test_accepts_range(self, app):
+        response = app.get('/runs', {
+            'limit': 2,
+            'lower': '2020-10-31T23:40:01+0000',
+            'upper': '2020-10-31T23:40:02+0000',
+        })
+        assert response.json.keys() == {'run-2', 'run-3'}
+
+    def test_refuses_range_and_page_token(self, app):
+        app.get('/runs', {'lower': 'asdf', 'page_token': 'asdf'}, status=400)
 
 
 @pytest.mark.usefixtures('basicdb')
