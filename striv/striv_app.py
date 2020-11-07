@@ -1,8 +1,10 @@
 # pylint: disable = unsubscriptable-object
 
+import base64
 import json
 import logging
 import sys
+import urllib.parse
 import uuid
 from argparse import ArgumentParser
 from datetime import datetime, timezone
@@ -10,6 +12,8 @@ from datetime import datetime, timezone
 import marshmallow
 from bottle import Bottle, HTTPResponse, request, response
 from striv import schemas, templating
+
+DEFAULT_LIMIT = 1000
 
 app = Bottle()
 
@@ -111,6 +115,15 @@ def _apply_job(job_id, job):
     store.upsert_entities(('job', job_id, job))
 
 
+def _encode_page_token(*rnge):
+    raw = json.dumps(rnge).encode('utf-8')
+    return urllib.parse.quote(base64.b64encode(raw))
+
+
+def _decode_page_token(encoded):
+    return json.loads(base64.b64decode(urllib.parse.unquote(encoded)))
+
+
 @app.get('/jobs')
 def list_jobs():
     '''
@@ -192,9 +205,24 @@ def refresh_runs():
 @app.get('/runs')
 def list_runs():
     '''
-    Retrieve runs.
+    Retrieve runs. Number of runs can be controlled by limit, but there
+    is a hard max (1000 by default). If there are more runs than limit
+    allows, a Link header is returned which can be used to request the
+    next page.
     '''
-    return store.find_entities('run')
+    rnge = None
+    if 'page_token' in request.query:
+        rnge = _decode_page_token(request.query['page_token'])
+    limit = int(request.query.get('limit', DEFAULT_LIMIT))
+    limit = min(limit, DEFAULT_LIMIT) + 1
+
+    runs = store.find_entities('run', range=rnge, limit=limit)
+    if len(runs) == limit:
+        (_, last_run) = runs.popitem()
+        response.headers['Link'] = '</runs?page_token=%s>; rel="next"' % (
+            _encode_page_token('desc', last_run['created_at'], None)
+        )
+    return runs
 
 
 @app.get('/state')
@@ -259,7 +287,13 @@ def main():
     global store, backends
     store = sqlite_store
     backends['nomad'] = nomad_backend
-    store.setup(database=args.database)
+    store.setup(
+        database=args.database,
+        sortkeys={
+            'job': lambda job: job['name'],
+            'run': lambda run: run['created_at']
+        }
+    )
     app.run(host=args.bottle_host, reloader=True,
             port=args.bottle_port, debug=True)
 

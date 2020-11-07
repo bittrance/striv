@@ -1,4 +1,5 @@
 # pylint: disable = missing-class-docstring, missing-function-docstring, no-self-use, redefined-outer-name, too-few-public-methods
+import re
 from datetime import datetime
 
 import bottle
@@ -67,9 +68,32 @@ def app(backend):
 
 @pytest.fixture()
 def basicdb():
-    sqlite_store.setup()
+    sqlite_store.setup(sortkeys={
+        'job': lambda job: job.get('name', None),
+        'run': lambda run: run.get('created_at', None)
+    })
     sqlite_store.upsert_entities(('execution', 'nomad', AN_EXECUTION))
     sqlite_store.upsert_entities(('dimension', 'maturity', A_DIMENSION))
+
+
+@pytest.fixture()
+def four_runs():
+    sqlite_store.upsert_entities(('run', 'run-1', {
+        'job_id': 'job-1',
+        'created_at': '2020-10-31T23:40:00+0000',
+    }))
+    sqlite_store.upsert_entities(('run', 'run-2', {
+        'job_id': 'job-1',
+        'created_at': '2020-10-31T23:40:01+0000',
+    }))
+    sqlite_store.upsert_entities(('run', 'run-3', {
+        'job_id': 'job-1',
+        'created_at': '2020-10-31T23:40:02+0000',
+    }))
+    sqlite_store.upsert_entities(('run', 'run-4', {
+        'job_id': 'job-1',
+        'created_at': '2020-10-31T23:40:03+0000',
+    }))
 
 
 class TestListJobs:
@@ -204,13 +228,24 @@ class TestRefreshRuns:
         assert response.json == {'processed': 1}
 
 
+@pytest.mark.usefixtures('basicdb', 'four_runs')
 class TestListRuns:
-    def test_list_runs(self, app):
-        sqlite_store.setup()
-        sqlite_store.upsert_entities(('run', 'alloc-1', A_RUN))
-        sqlite_store.upsert_entities(('run', 'alloc-2', A_RUN))
+    def test_returns_all_runs(self, app):
         response = app.get('/runs')
-        assert response.json == {'alloc-1': A_RUN, 'alloc-2': A_RUN}
+        assert response.json.keys() == {
+            'run-1', 'run-2', 'run-3', 'run-4'}
+
+    def test_respects_paginates(self, app):
+        response = app.get('/runs?limit=2')
+        assert response.json.keys() == {'run-1', 'run-2'}
+        assert_that(
+            response.headers['link'],
+            matches_regexp('<(.*)>; rel="next"')
+        )
+        url = re.match('<(.*)>; rel="next"', response.headers['link'])[1]
+        response = app.get(url + '&limit=2')
+        assert response.json.keys() == {'run-3', 'run-4'}
+        assert not response.headers.get('link')
 
 
 @pytest.mark.usefixtures('basicdb')
