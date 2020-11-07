@@ -1,11 +1,11 @@
 # pylint: disable = unsubscriptable-object
 
-import uuid
-from argparse import ArgumentParser
-
 import json
 import logging
 import sys
+import uuid
+from argparse import ArgumentParser
+from datetime import datetime, timezone
 
 import marshmallow
 from bottle import Bottle, HTTPResponse, request, response
@@ -106,6 +106,8 @@ def _apply_job(job_id, job):
     execution, payload = _job_to_payload(job)
     backend = backends[execution['driver']]
     backend.sync_job(execution['driver_config'], job_id, payload)
+    job['modified_at'] = datetime.now(
+        timezone.utc).strftime('%Y-%m-%dT%H:%M:%S%z')
     store.upsert_entities(('job', job_id, job))
 
 

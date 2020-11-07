@@ -1,4 +1,6 @@
 # pylint: disable = missing-class-docstring, missing-function-docstring, no-self-use, redefined-outer-name, too-few-public-methods
+from datetime import datetime
+
 import bottle
 import pytest
 import webtest
@@ -85,6 +87,11 @@ class TestEvaluateJob:
         response = app.post_json('/jobs/evaluate', A_JOB)
         assert response.json == {'payload': '"ze_template"\n'}
 
+    def test_ignores_readonly_modified_at(self, app):
+        job = A_JOB.copy()
+        job['modified_at'] = '2020-10-31T23:40:40+0000'
+        app.post_json('/jobs/evaluate', job)
+
     def test_evaluate_job_explains_why_template_is_invalid(self, app):
         bad_execution = AN_EXECUTION.copy()
         bad_execution.update({'payload_template': '"foo'})
@@ -102,7 +109,11 @@ class TestCreateJob:
         eid = response.json['id']
         assert eid
         created_job, *_ = sqlite_store.load_entities(('job', eid))
-        assert A_JOB == created_job
+        assert created_job['name'] == 'ze-name'
+        assert datetime.strptime(
+            created_job['modified_at'],
+            '%Y-%m-%dT%H:%M:%S%z'
+        ).timestamp() - datetime.now().timestamp() < 1
 
     def test_create_job_invokes_backend(self, app, backend):
         response = app.post_json('/jobs', A_JOB)
@@ -145,7 +156,24 @@ class TestPutJob:
         updated_job['name'] = 'updated'
         assert app.put_json(
             '/job/job-1', updated_job).json == {'id': 'job-1'}
-        assert sqlite_store.load_entities(('job', 'job-1'))[0] == updated_job
+        stored_job = sqlite_store.load_entities(('job', 'job-1'))[0]
+        assert stored_job['name'] == 'updated'
+
+    def test_ignores_readonly_modified_at(self, app):
+        sqlite_store.upsert_entities(('job', 'job-1', A_JOB))
+        updated_job = A_JOB.copy()
+        updated_job['modified_at'] = '2020-10-31T23:40:00+0000'
+        app.put_json('/job/job-1', updated_job)
+        stored_job = sqlite_store.load_entities(('job', 'job-1'))[0]
+        assert stored_job['modified_at'] != '2020-10-31T23:40:00+0000'
+
+    def test_put_job_maintains_modified_at(self, app):
+        job = A_JOB.copy()
+        job['modified_at'] = '2020-10-31T23:40:00+0000'
+        sqlite_store.upsert_entities(('job', 'job-1', job))
+        assert app.put_json('/job/job-1', A_JOB).json == {'id': 'job-1'}
+        stored_job = sqlite_store.load_entities(('job', 'job-1'))[0]
+        assert stored_job['modified_at'] > '2020-10-31T23:40:00+0000'
 
     def test_put_job_invokes_backend(self, app, backend):
         sqlite_store.upsert_entities(('job', 'job-1', A_JOB))

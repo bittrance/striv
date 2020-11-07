@@ -44,6 +44,7 @@ class Job(Schema):
         keys=fields.String(validate=dimension_name_validation)
     )
     params = ParamsDefinition
+    modified_at = fields.String()
 
 
 class State(Schema):
