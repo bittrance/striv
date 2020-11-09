@@ -5,11 +5,13 @@ describe('actions', () => {
     let evaluation = { payload: { some: 'payload' } }
     let job = { name: 'ze-name', execution: 'ze-execution' }
     let run1 = {
-        status: 'pending'
+        status: 'pending',
+        created_at: '2020-10-31T23:40:40+0000',
     }
     let run2 = {
         status: 'successful',
-        started_at: '2020-10-31T23:40:00+0000',
+        created_at: '2020-10-31T23:40:41+0000',
+        started_at: '2020-10-31T23:40:01+0000',
         finished_at: '2020-10-31T23:40:05+0000',
     }
 
@@ -26,12 +28,50 @@ describe('actions', () => {
     })
 
     describe('load_job', () => {
-        it('loads a single job', async () => {
-            fetchMock.get('path:/api/job/job-1', job)
-            let commit = jest.fn()
+        let commit
+
+        beforeEach(async () => {
+            let my_job = Object.assign({}, job)
+            my_job.modified_at = '2020-10-31T23:40:00+0000'
+            fetchMock.get('path:/api/job/job-1', my_job)
+            commit = jest.fn()
             await store.actions.load_job({ commit }, 'job-1')
-            expect(commit).toHaveBeenCalledWith('current_job', job)
+        })
+
+        it('loads a single job', async () => {
+            expect(commit).toHaveBeenCalledWith(
+                'current_job',
+                expect.objectContaining({ name: 'ze-name' })
+            )
             expect(commit).toHaveBeenCalledWith('current_job_id', 'job-1')
+        })
+
+        it('converts ISO date strings to date objects', () => {
+            expect(commit).toHaveBeenCalledWith(
+                'current_job',
+                expect.objectContaining({ modified_at: expect.any(Date) })
+            )
+        })
+    })
+
+    describe('load_jobs', () => {
+        let commit
+
+        beforeEach(async () => {
+            let my_job = Object.assign({}, job)
+            my_job.modified_at = '2020-10-31T23:40:00+0000'
+            fetchMock.get('path:/api/jobs', { 'job-1': my_job })
+            commit = jest.fn()
+            await store.actions.load_jobs({ commit })
+        })
+
+        it('loads a single job', async () => {
+            expect(commit).toHaveBeenCalledWith(
+                'load_jobs',
+                expect.objectContaining({
+                    'job-1': expect.objectContaining({ modified_at: expect.any(Date) })
+                })
+            )
         })
     })
 
@@ -79,6 +119,19 @@ describe('actions', () => {
                 expect.objectContaining({
                     'run-1': expect.anything(),
                     'run-2': expect.anything(),
+                })
+            )
+        })
+
+        it('converts ISO date strings to date objects', () => {
+            expect(commit).toHaveBeenCalledWith(
+                'load_runs',
+                expect.objectContaining({
+                    'run-2': expect.objectContaining({
+                        created_at: expect.any(Date),
+                        started_at: expect.any(Date),
+                        finished_at: expect.any(Date),
+                    })
                 })
             )
         })

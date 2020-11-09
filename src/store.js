@@ -1,5 +1,13 @@
+function iso_string_to_date(obj, props) {
+    for (const prop of props) {
+        if (obj[prop]) {
+            obj[prop] = new Date(obj[prop])
+        }
+    }
+}
+
 function duration(run) {
-    let delta = (new Date(run.finished_at) - new Date(run.started_at)) / 1000;
+    let delta = (run.finished_at - run.started_at) / 1000;
     let hours = Math.floor(delta / 3600);
     let minutes = Math.ceil((delta % 3600) / 60);
     let response = `${minutes}m`;
@@ -63,12 +71,16 @@ export default {
         async load_job({ commit }, job_id) {
             const response = await fetch(`/api/job/${job_id}`)
             let job = await response.json()
+            iso_string_to_date(job, ['modified_at'])
             commit('current_job', job)
             commit('current_job_id', job_id)
         },
         async load_jobs({ commit }) {
             const response = await fetch('/api/jobs')
             const jobs = await response.json()
+            for (const job of Object.values(jobs)) {
+                iso_string_to_date(job, ['modified_at'])
+            }
             commit('load_jobs', jobs)
         },
         async store_current_job({ state }) {
@@ -87,9 +99,10 @@ export default {
             });
         },
         async load_runs({ commit }) {
-            const response = await fetch('/api/runs')
+            const response = await fetch(`/api/runs?limit=20`)
             const runs = await response.json()
             for (const run of Object.values(runs)) {
+                iso_string_to_date(run, ['created_at', 'started_at', 'finished_at'])
                 if (run.started_at && run.finished_at) {
                     run.duration = duration(run)
                 }
