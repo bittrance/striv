@@ -4,6 +4,10 @@ describe('compactDateTime', () => {
     const now = new Date('2020-11-04T18:21:09.731+0100')
     const today = new Date('2020-11-04T18:21:09.731Z')
 
+    it('returns empty string for unknown date', () => {
+        expect(compactDateTime(undefined)).toEqual(undefined)
+    })
+
     it('returns only time for today', () => {
         expect(compactDateTime(today, now)).toEqual('19:21')
     })

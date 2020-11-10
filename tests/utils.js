@@ -5,7 +5,7 @@ const MockRouterLink = {
 }
 
 export function mount_options(state) {
-    let $route = { params: {} }
+    let $route = { params: {}, query: {} }
     let $router = { push: jest.fn() }
     let $store = {
         state: state,

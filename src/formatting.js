@@ -1,4 +1,7 @@
 export function compactDateTime(date, now) {
+    if (date == undefined) {
+        return undefined
+    }
     if (now == undefined) {
         now = new Date()
     }

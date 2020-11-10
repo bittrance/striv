@@ -98,8 +98,12 @@ export default {
                 body: JSON.stringify(state.current_job),
             });
         },
-        async load_runs({ commit }) {
-            const response = await fetch(`/api/runs?limit=20`)
+        async load_runs({ commit }, newest) {
+            let url = '/api/runs?limit=20'
+            if (newest) {
+                url += `&upper=${encodeURIComponent(newest.toISOString())}`
+            }
+            const response = await fetch(url)
             const runs = await response.json()
             for (const run of Object.values(runs)) {
                 iso_string_to_date(run, ['created_at', 'started_at', 'finished_at'])
