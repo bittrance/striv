@@ -7,13 +7,14 @@ import pytest
 import webtest
 
 from hamcrest import *  # pylint: disable = unused-wildcard-import
-from striv import striv_app, sqlite_store
+from striv import errors, striv_app, sqlite_store
 
 bottle.debug(True)
 
 AN_EXECUTION = {
     'name': 'Production Nomad',
     'driver': 'nomad',
+    'logstore': 'nomad',
     'driver_config': {'some': 'config'},
     'default_params': {'ze_param': 'execution'},
     'payload_template': '"ze_template"'
@@ -54,15 +55,33 @@ class RecordingBackend:
         return self.runs
 
 
+class RecordingLogstore:
+    def __init__(self):
+        self.actions = []
+        self.logs = {}
+
+    def fetch_logs(self, driver_config, run_id):
+        self.actions.append(('fetch_logs', driver_config, run_id))
+        if isinstance(self.logs, Exception):
+            raise self.logs  # pylint: disable = raising-bad-type
+        return self.logs
+
+
 @pytest.fixture()
 def backend():
     return RecordingBackend()
 
 
 @pytest.fixture()
-def app(backend):
+def logstore():
+    return RecordingLogstore()
+
+
+@pytest.fixture()
+def app(backend, logstore):
     striv_app.store = sqlite_store
     striv_app.backends['nomad'] = backend
+    striv_app.logstores['nomad'] = logstore
     return webtest.TestApp(striv_app.app)
 
 
@@ -80,18 +99,22 @@ def basicdb():
 def four_runs():
     sqlite_store.upsert_entities(('run', 'run-1', {
         'job_id': 'job-1',
+        'execution': 'nomad',
         'created_at': '2020-10-31T23:40:00+0000',
     }))
     sqlite_store.upsert_entities(('run', 'run-2', {
         'job_id': 'job-1',
+        'execution': 'nomad',
         'created_at': '2020-10-31T23:40:01+0000',
     }))
     sqlite_store.upsert_entities(('run', 'run-3', {
         'job_id': 'job-1',
+        'execution': 'nomad',
         'created_at': '2020-10-31T23:40:02+0000',
     }))
     sqlite_store.upsert_entities(('run', 'run-4', {
         'job_id': 'job-1',
+        'execution': 'nomad',
         'created_at': '2020-10-31T23:40:03+0000',
     }))
 
@@ -263,6 +286,34 @@ class TestListRuns:
 
     def test_refuses_range_and_page_token(self, app):
         app.get('/runs', {'lower': 'asdf', 'page_token': 'asdf'}, status=400)
+
+
+@pytest.mark.usefixtures('basicdb', 'four_runs')
+class TestGetRun:
+    def test_retrieves_single_run(self, app):
+        assert app.get('/run/run-1').json['job_id'] == 'job-1'
+
+    def test_returns_404_on_nonexistent_job(self, app):
+        app.get('/run/nonsense', status=404)
+
+
+@pytest.mark.usefixtures('basicdb', 'four_runs')
+class TestGetRunLog:
+    def test_invokes_logstore(self, app, logstore):
+        logstore.logs = {'run-1/stderr': 'ze-logs'}
+        app.get('/run/run-1/logs')
+        assert logstore.actions == [
+            ('fetch_logs', {'some': 'config'}, 'run-1')
+        ]
+
+    def test_returns_logs(self, app, logstore):
+        logstore.logs = {'run-1/stderr': 'ze-log'}
+        response = app.get('/run/run-1/logs')
+        assert response.json == {'run-1/stderr': 'ze-log'}
+
+    def test_says_run_is_gone(self, app, logstore):
+        logstore.logs = errors.RunNotFound('boom!')
+        app.get('/run/run-1/logs', status=410)
 
 
 @pytest.mark.usefixtures('basicdb')

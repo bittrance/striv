@@ -29,6 +29,7 @@ class Execution(Schema):
     '''
     name = fields.String(required=True)
     driver = fields.String(required=True, validate=validate.OneOf(['nomad']))
+    logstore = fields.String(required=True, validate=validate.OneOf(['nomad']))
     driver_config = fields.Dict()
     default_params = ParamsDefinition
     payload_template = fields.String(required=True)

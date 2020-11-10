@@ -11,13 +11,14 @@ from datetime import datetime, timezone
 
 import marshmallow
 from bottle import Bottle, HTTPResponse, request, response
-from striv import schemas, templating
+from striv import errors, schemas, templating
 
 DEFAULT_LIMIT = 1000
 
 app = Bottle()
 
 backends = {}
+logstores = {}
 store = None
 logger = logging.getLogger('striv')
 handler = logging.StreamHandler(sys.stderr)
@@ -236,6 +237,37 @@ def list_runs():
     return runs
 
 
+@app.get('/run/:run_id')
+def get_run(run_id):
+    '''
+    Returns a single run.
+    '''
+    try:
+        return store.load_entities(('run', run_id))[0]
+    except KeyError:
+        return HTTPResponse(status=404)
+
+
+@app.get('/run/:run_id/logs')
+def get_run_log(run_id):
+    '''
+    Returns a dict with log streams.
+    '''
+    try:
+        run = store.load_entities(('run', run_id))[0]
+    except KeyError:
+        return HTTPResponse(status=404)
+    execution = store.load_entities(('execution', run['execution']))[0]
+    logstore = logstores[execution['logstore']]
+    try:
+        return logstore.fetch_logs(execution['driver_config'], run_id)
+    except errors.RunNotFound as err:
+        return HTTPResponse(status=410, body=json.dumps({
+            'title': 'run not found',
+            'detail': str(err),
+        }))
+
+
 @app.get('/state')
 def dump_state():
     '''
@@ -294,10 +326,11 @@ def main():
 
     logger.setLevel(args.log_level)
 
-    from striv import nomad_backend, sqlite_store  # pylint: disable = import-outside-toplevel
-    global store, backends
+    from striv import nomad_backend, nomad_logstore, sqlite_store  # pylint: disable = import-outside-toplevel
+    global backends, logstores, store
     store = sqlite_store
     backends['nomad'] = nomad_backend
+    logstores['nomad'] = nomad_logstore
     store.setup(
         database=args.database,
         sortkeys={

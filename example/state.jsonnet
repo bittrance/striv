@@ -32,6 +32,7 @@
     'local_nomad': {
       name: 'Dev Nomad',
       driver: 'nomad',
+      logstore: 'nomad',
       driver_config: {
         nomad_url: 'http://localhost:4646'
       },
@@ -43,6 +44,7 @@
     'periodic_nomad': {
       name: 'Periodic Nomad',
       driver: 'nomad',
+      logstore: 'nomad',
       driver_config: {
         nomad_url: 'http://localhost:4646'
       },
