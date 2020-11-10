@@ -224,7 +224,10 @@ class TestRefreshRuns:
         backend.runs['alloc-1'] = A_RUN
         response = app.post('/runs/refresh-all')
         runs = sqlite_store.find_entities('run')
-        assert_that(runs['alloc-1'], has_entry('job_id', 'job-1'))
+        assert_that(runs['alloc-1'], has_entries({
+            'job_id': 'job-1',
+            'execution': 'nomad'
+        }))
         assert response.json == {'processed': 1}
 
 

@@ -197,6 +197,8 @@ def refresh_runs():
     total_runs = 0
     for (_backend, driver_config) in identities.values():
         runs = _backend.fetch_runs(driver_config, jobs).items()
+        for _, run in runs:
+            run['execution'] = jobs[run['job_id']]['execution']
         store.upsert_entities(*(('run', run_id, run) for run_id, run in runs))
         total_runs += len(runs)
     return {'processed': total_runs}
