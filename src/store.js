@@ -1,3 +1,6 @@
+const JOB_DATE_FIELDS = ['modified_at']
+const RUN_DATE_FIELDS = ['created_at', 'started_at', 'finished_at']
+
 function iso_string_to_date(obj, props) {
     for (const prop of props) {
         if (obj[prop]) {
@@ -29,6 +32,8 @@ export default {
             current_job_id: null,
             current_job_evaluation: null,
             runs: {},
+            current_run: {},
+            current_run_logs: {},
         }
     },
     mutations: {
@@ -51,6 +56,12 @@ export default {
         load_runs(state, runs) {
             state.runs = runs
         },
+        current_run(state, run) {
+            state.current_run = run
+        },
+        current_run_logs(state, logs) {
+            state.current_run_logs = logs
+        },
     },
     actions: {
         async load_state({ commit }) {
@@ -71,7 +82,7 @@ export default {
         async load_job({ commit }, job_id) {
             const response = await fetch(`/api/job/${job_id}`)
             let job = await response.json()
-            iso_string_to_date(job, ['modified_at'])
+            iso_string_to_date(job, JOB_DATE_FIELDS)
             commit('current_job', job)
             commit('current_job_id', job_id)
         },
@@ -79,7 +90,7 @@ export default {
             const response = await fetch('/api/jobs')
             const jobs = await response.json()
             for (const job of Object.values(jobs)) {
-                iso_string_to_date(job, ['modified_at'])
+                iso_string_to_date(job, JOB_DATE_FIELDS)
             }
             commit('load_jobs', jobs)
         },
@@ -106,12 +117,33 @@ export default {
             const response = await fetch(url)
             const runs = await response.json()
             for (const run of Object.values(runs)) {
-                iso_string_to_date(run, ['created_at', 'started_at', 'finished_at'])
+                iso_string_to_date(run, RUN_DATE_FIELDS)
                 if (run.started_at && run.finished_at) {
                     run.duration = duration(run)
                 }
             }
             commit('load_runs', runs)
-        }
+        },
+        async load_run({ commit }, run_id) {
+            const [[run, job], logs] = await Promise.all([
+                fetch(`/api/run/${run_id}`)
+                    .then((response) => response.json())
+                    .then(async (run) => [
+                        run,
+                        await fetch(`/api/job/${run.job_id}`)
+                            .then((response) => response.json())
+                    ]),
+                fetch(`/api/run/${run_id}/logs`)
+                    .then((response) => response.json()),
+            ])
+            iso_string_to_date(run, RUN_DATE_FIELDS)
+            if (run.started_at && run.finished_at) {
+                run.duration = duration(run)
+            }
+            commit('current_run', run)
+            commit('current_run_logs', logs)
+            commit('current_job', job)
+            commit('current_job_id', run.job_id)
+        },
     }
 }

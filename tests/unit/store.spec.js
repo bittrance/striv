@@ -5,15 +5,18 @@ describe('actions', () => {
     let evaluation = { payload: { some: 'payload' } }
     let job = { name: 'ze-name', execution: 'ze-execution' }
     let run1 = {
+        job_id: 'job-1',
         status: 'pending',
         created_at: '2020-10-31T23:40:40+0000',
     }
     let run2 = {
+        job_id: 'job-1',
         status: 'successful',
         created_at: '2020-10-31T23:40:41+0000',
         started_at: '2020-10-31T23:40:01+0000',
         finished_at: '2020-10-31T23:40:05+0000',
     }
+    let logs1 = { 'some': 'log' }
 
     beforeEach(() => fetchMock.mockReset())
 
@@ -139,6 +142,44 @@ describe('actions', () => {
         it('calculates duration for completed jobs', () => {
             let runs = commit.mock.calls[0][1]
             expect(runs['run-2']).toHaveProperty('duration', '1m')
+        })
+    })
+
+    describe('load_run', () => {
+        let commit
+
+        beforeEach(async () => {
+            commit = jest.fn()
+            fetchMock.get('path:/api/run/run-1', run1)
+            fetchMock.get('path:/api/run/run-1/logs', logs1)
+            fetchMock.get('path:/api/job/job-1', job)
+            await store.actions.load_run({ commit }, 'run-1')
+        })
+
+        it('commits the run and its logs', () => {
+            expect(commit).toHaveBeenCalledWith(
+                'current_run',
+                expect.objectContaining({
+                    status: 'pending',
+                    created_at: expect.any(Date),
+                })
+            )
+            expect(commit).toHaveBeenCalledWith('current_run_logs', logs1)
+        })
+
+        it('commits the runs job and job id', () => {
+            expect(commit).toHaveBeenCalledWith(
+                'current_job',
+                expect.objectContaining({ name: 'ze-name' })
+            )
+            expect(commit).toHaveBeenCalledWith('current_job_id', 'job-1')
+        })
+
+        it('converts ISO date strings to date objects', () => {
+            expect(commit).toHaveBeenCalledWith(
+                'current_run',
+                expect.objectContaining({ created_at: expect.any(Date) })
+            )
         })
     })
 })

@@ -22,7 +22,7 @@
           </td>
           <td class="text-right">
             <router-link v-bind:to="'/job/' + id"
-              ><i class="fas fa-edit text-secondary"></i
+              ><i class="fas fa-edit text-primary"></i
             ></router-link>
           </td>
         </tr>

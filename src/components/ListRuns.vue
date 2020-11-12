@@ -26,7 +26,9 @@
             <i :class="statusClass(run.status)" />
           </td>
           <th class="text-nowrap" scope="row">
-            {{ this.$store.state?.jobs[run.job_id]?.name }}
+            <router-link :to="`/run/${id}`">{{
+              this.$store.state?.jobs[run.job_id]?.name
+            }}</router-link>
           </th>
           <td class="text-right">
             {{ run.started_at ? compactDateTime(run.started_at) : "&mdash;" }}
@@ -39,7 +41,7 @@
 </template>
 
 <script>
-import { compactDateTime } from "@/formatting.js";
+import { compactDateTime, statusClass } from "@/formatting.js";
 export default {
   name: "list-runs",
   computed: {
@@ -68,22 +70,12 @@ export default {
   },
   methods: {
     compactDateTime,
+    statusClass,
     load_runs_page() {
       if (this.newest) {
         this.$store.dispatch("load_runs", this.newest);
       } else {
         this.$store.dispatch("load_runs");
-      }
-    },
-    statusClass(status) {
-      if (status == "pending") {
-        return "fas fa-hourglass-half text-secondary";
-      } else if (status == "running") {
-        return "fas fa-play text-warning";
-      } else if (status == "successful") {
-        return "fas fa-check text-success";
-      } else if (status == "failed") {
-        return "fas fa-times-circle text-danger";
       }
     },
   },

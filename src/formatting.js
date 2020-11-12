@@ -28,3 +28,15 @@ export function compactDateTime(date, now) {
         return date.toLocaleDateString()
     }
 }
+
+export function statusClass(status) {
+    if (status == "pending") {
+        return "fas fa-hourglass-half text-secondary";
+    } else if (status == "running") {
+        return "fas fa-play text-warning";
+    } else if (status == "successful") {
+        return "fas fa-check text-success";
+    } else if (status == "failed") {
+        return "fas fa-times-circle text-danger";
+    }
+}

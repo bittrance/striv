@@ -8,8 +8,10 @@ import App from './App.vue'
 import ModifyJob from './components/ModifyJob.vue'
 import ListJobs from './components/ListJobs.vue'
 import ListRuns from './components/ListRuns.vue'
+import ViewRun from './components/ViewRun.vue'
 import PreviewPayload from '@/components/PreviewPayload.vue'
 import store from '@/store.js'
+import '@/striv.css'
 
 const router = createRouter({
     history: createWebHashHistory(),
@@ -19,6 +21,7 @@ const router = createRouter({
         { path: "/jobs/preview", component: PreviewPayload },
         { path: "/job/:job_id", component: ModifyJob },
         { path: "/runs", alias: "/", component: ListRuns },
+        { path: "/run/:run_id", component: ViewRun },
     ]
 })
 

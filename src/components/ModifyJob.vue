@@ -159,9 +159,3 @@ export default {
   },
 };
 </script>
-<style scoped>
-h2 {
-  font-size: 1.4rem;
-  color: rgb(192, 192, 192);
-}
-</style>
