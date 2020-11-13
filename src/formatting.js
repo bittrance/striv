@@ -10,7 +10,7 @@ export function compactDateTime(date, now) {
         new Date(date.getFullYear(), date.getMonth(), date.getDate())
     ) / 86400000
     if (delta < 1) {
-        return date.toLocaleString(
+        return 'Today ' + date.toLocaleString(
             'en-GB',
             { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }
         )

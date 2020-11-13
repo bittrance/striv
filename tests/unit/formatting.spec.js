@@ -9,7 +9,7 @@ describe('compactDateTime', () => {
     })
 
     it('returns only time for today', () => {
-        expect(compactDateTime(today, now)).toEqual('19:21')
+        expect(compactDateTime(today, now)).toEqual('Today 19:21')
     })
 
     it('returns times before today with weekday', () => {
