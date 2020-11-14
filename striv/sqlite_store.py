@@ -11,8 +11,19 @@ CREATE TABLE IF NOT EXISTS entities (
 SORTKEY_INDEX_DEF = '''
 CREATE INDEX IF NOT EXISTS sortkey ON entities (sortkey)
 '''
+RELATION_TABLE_DEF = '''
+CREATE TABLE IF NOT EXISTS relations (
+    typed_id TEXT,
+    relation TEXT,
+    key TEXT
+)
+'''
+RELATION_INDEX_DEF = '''
+CREATE INDEX IF NOT EXISTS lookup ON relations (relation, key)
+'''
 
 CONN = None
+RELATIONS = {}  # pylint: disable = dangerous-default-value
 SORTKEYS = {}  # pylint: disable = dangerous-default-value
 
 
@@ -20,16 +31,35 @@ def _cursor():
     return CONN.cursor()
 
 
-def setup(database=':memory:', sortkeys={}):
+def _prepare_entities(entities):
+    for (typ, eid, entity) in entities:
+        yield (
+            '%s:%s' % (typ, eid),
+            SORTKEYS[typ](entity) if typ in SORTKEYS else None,
+            json.dumps(entity)
+        )
+
+
+def _relation_keys(entities):
+    for (typ, eid, entity) in entities:
+        if typ in RELATIONS:
+            for (relation, key) in RELATIONS[typ](entity):
+                yield ('%s:%s' % (typ, eid), relation, key)
+
+
+def setup(database=':memory:', relations=None, sortkeys=None):
     '''
     Setup the sqlite store. Defaults to creating an in-memory store.
     '''
-    global CONN, SORTKEYS
-    SORTKEYS.update(sortkeys)
+    global CONN, RELATIONS, SORTKEYS
+    RELATIONS.update(relations or {})
+    SORTKEYS.update(sortkeys or {})
     CONN = sqlite3.connect(database)
     CONN.isolation_level = None
     _cursor().execute(ENTITY_TABLE_DEF)
     _cursor().execute(SORTKEY_INDEX_DEF)
+    _cursor().execute(RELATION_TABLE_DEF)
+    _cursor().execute(RELATION_INDEX_DEF)
 
 
 def load_entities(*query):
@@ -54,15 +84,22 @@ def load_entities(*query):
     return entities
 
 
-def find_entities(typ, limit=None, range=None):
+def find_entities(typ, related_to=None, limit=None, range=None):
     '''
     Retrieve all entities of a particular type. Returns a dict mapping
-    id to entity. limit can be used to constrain the number of returned
-    results. range is a (asc | desc, inclusive lower, inclusive upper)
-    tuple which returns a slice of entities in a certain sort order.
+    id to entity. related_to is a (relation, key) tuple and can be used
+    to scope the result to just a single relation. limit can be used to
+    constrain the number of returned results. range is a (asc | desc,
+    inclusive lower, inclusive upper) tuple which returns a slice of
+    entities in a certain sort order.
     '''
-    query = 'SELECT typed_id, entity FROM entities WHERE typed_id LIKE ?'
-    args = ['%s:%%' % typ]
+    if related_to:
+        flter = 'typed_id IN (SELECT typed_id FROM relations WHERE relation = ? AND key = ?)'
+        args = [*related_to]
+    else:
+        flter = 'typed_id LIKE ?'
+        args = ['%s:%%' % typ]
+    query = 'SELECT typed_id, entity FROM entities WHERE %s' % flter
     if range is not None:
         order, lower, upper = range
         assert order.upper() in ['ASC', 'DESC']
@@ -82,22 +119,28 @@ def find_entities(typ, limit=None, range=None):
 def upsert_entities(*entities):
     '''
     Store entities in the store, overwriting any previous entity with
-    the same eid. Input is a series of (type, id, entity). Entity is any 
-    jsonable value.
+    the same eid. Input is a series of (type, id, entity). Entity is any
+    jsonable value. Updates relations indexes as defined in the relations
+    argument passed to setup.
     '''
-    insert = '''
+    replace_entities = '''
     INSERT INTO entities (typed_id, sortkey, entity) VALUES (?, ?, ?)
     ON CONFLICT(typed_id)
     DO UPDATE SET sortkey = excluded.sortkey, entity = excluded.entity
     '''
-    rows = ([
-        '%s:%s' % (typ, eid),
-        SORTKEYS[typ](entity) if typ in SORTKEYS else None,
-        json.dumps(entity)
-    ] for (typ, eid, entity) in entities)
-    _cursor().executemany(insert, rows)
+    old_relations = '''
+    DELETE FROM relations WHERE typed_id = ?
+    '''
+    new_relations = '''
+    INSERT INTO relations (typed_id, relation, key) VALUES (?, ?, ?)
+    '''
+    ids = (('%s:%s' % (typ, eid),) for (typ, eid, _) in entities)
+    _cursor().executemany(replace_entities, _prepare_entities(entities))
+    _cursor().executemany(old_relations, ids)
+    _cursor().executemany(new_relations, _relation_keys(entities))
 
 
+# TODO: replace_type needs to know what index to chuck out
 def replace_type(typ, entities):
     '''
     Drop all entities of one type, and replace them with the provided

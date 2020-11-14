@@ -87,16 +87,24 @@ def app(backend, logstore):
 
 @pytest.fixture()
 def basicdb():
-    sqlite_store.setup(sortkeys={
-        'job': lambda job: job.get('name', None),
-        'run': lambda run: run.get('created_at', None)
-    })
+    sqlite_store.setup(
+        relations={
+            'run': lambda run: [('job', run['job_id'])],
+            'job': lambda job: [('dvalue', '%s:%s' % (n, v)) for (n, v) in job.get('dimensions', {}).items()]
+        },
+        sortkeys={
+            'job': lambda job: job.get('name', None),
+            'run': lambda run: run.get('created_at', None)
+        }
+    )
     sqlite_store.upsert_entities(('execution', 'nomad', AN_EXECUTION))
     sqlite_store.upsert_entities(('dimension', 'maturity', A_DIMENSION))
 
 
 @pytest.fixture()
 def four_runs():
+    sqlite_store.upsert_entities(('job', 'job-1', A_JOB))
+    sqlite_store.upsert_entities(('job', 'job-2', A_JOB))
     sqlite_store.upsert_entities(('run', 'run-1', {
         'job_id': 'job-1',
         'execution': 'nomad',
@@ -113,7 +121,7 @@ def four_runs():
         'created_at': '2020-10-31T23:40:02+0000',
     }))
     sqlite_store.upsert_entities(('run', 'run-4', {
-        'job_id': 'job-1',
+        'job_id': 'job-2',
         'execution': 'nomad',
         'created_at': '2020-10-31T23:40:03+0000',
     }))
@@ -238,6 +246,43 @@ class TestPutJob:
         invalid_job.update({'gunk': False})
         response = app.put_json('/job/job-1', invalid_job, status=422)
         assert response.json['invalid-fields'] == {'gunk': ['Unknown field.']}
+
+
+@pytest.mark.usefixtures('basicdb', 'four_runs')
+class TestListJobRuns:
+    def test_returns_job_for_one_run(self, app):
+        response = app.get('/job/job-1/runs')
+        assert response.json.keys() == {'run-1', 'run-2', 'run-3'}
+        response = app.get('/job/job-2/runs')
+        assert response.json.keys() == {'run-4'}
+
+    def test_returns_404_for_unknown_job(self, app):
+        app.get('/job/job-3/runs', status=404)
+
+    def test_accepts_limit_and_returns_youngest_first(self, app):
+        response = app.get('/job/job-1/runs?limit=2')
+        assert response.json.keys() == {'run-3', 'run-2'}
+
+    def test_respects_paginates(self, app):
+        response = app.get('/job/job-1/runs?limit=2')
+        assert_that(
+            response.headers['link'],
+            matches_regexp('<(.*)>; rel="next"')
+        )
+        url = re.match('<(.*)>; rel="next"', response.headers['link'])[1]
+        response = app.get(url + '&limit=2')
+        assert response.json.keys() == {'run-1'}
+        assert not response.headers.get('link')
+
+    def test_accepts_range(self, app):
+        response = app.get('/job/job-1/runs', {
+            'lower': '2020-10-31T23:40:00+0000',
+            'upper': '2020-10-31T23:40:01+0000',
+        })
+        assert response.json.keys() == {'run-2', 'run-1'}
+
+    def test_refuses_range_and_page_token(self, app):
+        app.get('/runs', {'lower': 'asdf', 'page_token': 'asdf'}, status=400)
 
 
 @pytest.mark.usefixtures('basicdb')

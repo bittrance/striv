@@ -125,6 +125,24 @@ def _decode_page_token(encoded):
     return json.loads(base64.b64decode(urllib.parse.unquote(encoded)))
 
 
+def _range_and_adjusted_limit(request):
+    rnge = ['desc', None, None]
+    if ('lower' in request.query or 'upper' in request.query):
+        if 'page_token' in request.query:
+            raise HTTPResponse(
+                status=400,
+                body=json.dumps({
+                    'title': 'pagination cannot be combined with range'
+                })
+            )
+        rnge = ['desc', request.query.get('lower'), request.query.get('upper')]
+    elif 'page_token' in request.query:
+        rnge = _decode_page_token(request.query['page_token'])
+    limit = int(request.query.get('limit', DEFAULT_LIMIT))
+    limit = min(limit, DEFAULT_LIMIT) + 1
+    return (rnge, limit)
+
+
 @app.get('/jobs')
 def list_jobs():
     '''
@@ -180,6 +198,30 @@ def put_job(job_id):
     return {'id': job_id}
 
 
+@app.get('/job/:job_id/runs')
+def list_job_runs(job_id):
+    '''
+    Return a dict with all runs for this job.
+    '''
+    rnge, limit = _range_and_adjusted_limit(request)
+    try:
+        store.load_entities(('job', job_id))
+    except KeyError:
+        return HTTPResponse(status=404)
+    runs = store.find_entities(
+        'run',
+        related_to=('job', job_id),
+        range=rnge,
+        limit=limit
+    )
+    if len(runs) == limit:
+        (_, last_run) = runs.popitem()
+        response.headers['Link'] = '</runs?page_token=%s>; rel="next"' % (
+            _encode_page_token('desc', None, last_run['created_at'])
+        )
+    return runs
+
+
 @app.post('/runs/refresh-all')
 def refresh_runs():
     '''
@@ -213,21 +255,7 @@ def list_runs():
     allows, a Link header is returned which can be used to request the
     next page.
     '''
-    rnge = ['desc', None, None]
-    if ('lower' in request.query or 'upper' in request.query):
-        if 'page_token' in request.query:
-            return HTTPResponse(
-                status=400,
-                body=json.dumps({
-                    'title': 'pagination cannot be combined with range'
-                })
-            )
-        rnge = ['desc', request.query.get('lower'), request.query.get('upper')]
-    elif 'page_token' in request.query:
-        rnge = _decode_page_token(request.query['page_token'])
-    limit = int(request.query.get('limit', DEFAULT_LIMIT))
-    limit = min(limit, DEFAULT_LIMIT) + 1
-
+    rnge, limit = _range_and_adjusted_limit(request)
     runs = store.find_entities('run', range=rnge, limit=limit)
     if len(runs) == limit:
         (_, last_run) = runs.popitem()
@@ -333,6 +361,10 @@ def main():
     logstores['nomad'] = nomad_logstore
     store.setup(
         database=args.database,
+        relations={
+            'run': lambda run: [('job', run['job_id'])],
+            'job': lambda job: [('dvalue', '%s:%s' % (n, v)) for (n, v) in job.get('dimensions', {}).items()]
+        },
         sortkeys={
             'job': lambda job: job['name'],
             'run': lambda run: run['created_at']

@@ -7,16 +7,33 @@ from striv import sqlite_store
 
 @pytest.fixture()
 def store():
-    sqlite_store.setup(sortkeys={
-        'job': lambda job: job['name'],
-    })
+    sqlite_store.setup(
+        relations={
+            'run': lambda run: [('job', run['job_id'])],
+            'job': lambda job: [('dvalue', '%s:%s' % (n, v)) for (n, v) in job.get('dimensions', {}).items()]
+        },
+        sortkeys={
+            'job': lambda job: job['name'],
+        }
+    )
     return sqlite_store
 
 
 @pytest.fixture()
 def five_jobs(store):
     store.upsert_entities(
-        *[('job', 'job-%02d' % n, {'name': 'job-%02d' % n}) for n in range(1, 6)])
+        *[(
+            'job',
+            'job-%02d' % n,
+            {
+                'name': 'job-%02d' % n,
+                'dimensions': {
+                    'shared': 'value-%d' % (n % 2),
+                    'unique': 'value-%d' % n,
+                }
+            }
+        ) for n in range(1, 6)]
+    )
 
 
 def test_roundtrip_sorted(store):
@@ -45,6 +62,16 @@ class TestFindEntities:
         assert found.keys() == {'job-01', 'job-02',
                                 'job-03', 'job-04', 'job-05'}
 
+    def test_related_to_returns_only_related(self, store):
+        found = store.find_entities(
+            'job', related_to=('dvalue', 'unique:value-1'))
+        assert found.keys() == {'job-01'}
+
+    def test_related_to_can_produce_empty_result(self, store):
+        found = store.find_entities(
+            'job', related_to=('dvalue', 'unique:value-10'))
+        assert list(found) == []
+
     def test_find_entitites_paginates(self, store):
         found = store.find_entities('job', limit=3)
         assert found.keys() == {'job-01', 'job-02', 'job-03'}
@@ -64,6 +91,14 @@ class TestFindEntities:
     def test_returns_ranges_on_sortkey_with_empty_range(self, store):
         found = store.find_entities('job', range=('desc', 'job-10', None))
         assert list(found) == []
+
+    def test_related_to_and_range_cooperates(self, store):
+        found = store.find_entities(
+            'job',
+            related_to=('dvalue', 'shared:value-1'),
+            range=('desc', 'job-01', 'job-03')
+        )
+        assert found.keys() == {'job-01', 'job-03'}
 
     def test_paginates_ranges_descending(self, store):
         found = store.find_entities(
