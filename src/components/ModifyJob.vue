@@ -26,7 +26,7 @@
       @delete-dimension="delete_dimension"
     />
     <h2>Job-specific parameters</h2>
-    <ParamsEditor
+    <params-editor
       v-bind:params="params"
       @add-param="add_param"
       @delete-param="delete_param"

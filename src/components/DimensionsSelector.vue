@@ -2,10 +2,11 @@
   <table class="table table-sm table-responsive">
     <tbody>
       <tr v-for="[name, value] in Object.entries(selected)" :key="name">
-        <td class="col-sm-3 px-3 align-middle">{{ name }}</td>
+        <td class="col-sm-3 align-middle">{{ name }}</td>
         <td class="col-sm px-3 align-middle">{{ value }}</td>
         <td class="col-sm-1">
           <button
+            v-if="!readonly"
             type="button"
             name="delete-dimension"
             class="btn fas fa-trash-alt"
@@ -13,7 +14,10 @@
           />
         </td>
       </tr>
-      <tr>
+      <tr v-if="readonly && Object.entries(selected).length == 0">
+        <td class="text-muted" colspan="3">No dimensions selected</td>
+      </tr>
+      <tr v-if="!readonly">
         <td class="col-sm-3">
           <select name="new-name" class="custom-select" v-model="new_name">
             <option :value="null" hidden disabled>Select dimension</option>
@@ -55,7 +59,7 @@
 <script>
 export default {
   name: "dimensions-selector",
-  props: ["available", "selected"],
+  props: ["available", "selected", "readonly"],
   data() {
     return {
       new_name: null,

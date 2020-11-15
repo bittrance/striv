@@ -26,6 +26,22 @@ describe('DimensionsSelector', () => {
         expect(wrapper.text()).not.toContain('dim2val1')
     })
 
+    describe('when set readonly', () => {
+        it('does not contain input controls', () => {
+            let options = { props: { available, selected, readonly: true } }
+            let wrapper = mount(DimensionsSelector, options)
+            expect(wrapper.find("select").exists()).toBeFalsy()
+        })
+
+        describe('and there are no dimensions', () => {
+            it('provides a placeholder', () => {
+                let options = { props: { available: {}, selected: {}, readonly: true } }
+                let wrapper = mount(DimensionsSelector, options)
+                expect(wrapper.text()).toContain("No dimensions")
+            })
+        })
+    })
+
     describe('with selected dimeinsions', () => {
         it('lists selected dimensions', () => {
             expect(wrapper.text()).toContain('dim3val1')

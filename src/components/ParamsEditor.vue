@@ -2,10 +2,11 @@
   <table class="table table-sm table-responsive">
     <tbody>
       <tr v-for="[name, value] in Object.entries(params)" :key="name">
-        <td class="col-sm-3 px-3 align-middle">{{ name }}</td>
+        <td class="col-sm-3 align-middle">{{ name }}</td>
         <td class="col-sm px-3 align-middle">{{ value }}</td>
         <td class="col-sm-1">
           <button
+            v-if="!readonly"
             type="button"
             name="delete-param"
             class="btn fas fa-trash-alt"
@@ -13,7 +14,10 @@
           />
         </td>
       </tr>
-      <tr>
+      <tr v-if="readonly && Object.entries(params).length == 0">
+        <td colspan="3">No parameters provided</td>
+      </tr>
+      <tr v-if="!readonly">
         <td class="col-sm-3">
           <input
             type="text"
@@ -47,8 +51,8 @@
 
 <script>
 export default {
-  name: "ParamsEditor",
-  props: ["params"],
+  name: "params-editor",
+  props: ["params", "readonly"],
   data() {
     return {
       name: null,

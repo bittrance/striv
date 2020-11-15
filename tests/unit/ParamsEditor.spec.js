@@ -14,6 +14,20 @@ describe('ParamsEditor', () => {
         expect(wrapper.text()).toContain('value2')
     })
 
+    describe('when set readonly', () => {
+        it('does not contain input controls', () => {
+            let wrapper = mount(ParamsEditor, { props: { params, readonly: true } })
+            expect(wrapper.find("input").exists()).toBeFalsy()
+        })
+
+        describe('and there are no params', () => {
+            it('provides a placeholder', () => {
+                let wrapper = mount(ParamsEditor, { props: { params: {}, readonly: true } })
+                expect(wrapper.text()).toContain("No parameters")
+            })
+        })
+    })
+
     describe('when an add button is pressed', () => {
         test('does not emit add-param without input values', async () => {
             wrapper.find('[name="add-param"]').trigger('click')
