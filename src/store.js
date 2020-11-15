@@ -20,6 +20,22 @@ function duration(run) {
     return response;
 }
 
+async function load_runs(commit, base_url, newest) {
+    let url = `${base_url}?limit=20`
+    if (newest) {
+        url += `&upper=${encodeURIComponent(newest.toISOString())}`
+    }
+    const response = await fetch(url)
+    const runs = await response.json()
+    for (const run of Object.values(runs)) {
+        iso_string_to_date(run, RUN_DATE_FIELDS)
+        if (run.started_at && run.finished_at) {
+            run.duration = duration(run)
+        }
+    }
+    commit('load_runs', runs)
+}
+
 
 export default {
     strict: true,
@@ -86,6 +102,9 @@ export default {
             commit('current_job', job)
             commit('current_job_id', job_id)
         },
+        async load_job_runs({ commit }, { job_id, newest }) {
+            await load_runs(commit, `/api/job/${job_id}/runs`, newest)
+        },
         async load_jobs({ commit }) {
             const response = await fetch('/api/jobs')
             const jobs = await response.json()
@@ -110,19 +129,7 @@ export default {
             });
         },
         async load_runs({ commit }, newest) {
-            let url = '/api/runs?limit=20'
-            if (newest) {
-                url += `&upper=${encodeURIComponent(newest.toISOString())}`
-            }
-            const response = await fetch(url)
-            const runs = await response.json()
-            for (const run of Object.values(runs)) {
-                iso_string_to_date(run, RUN_DATE_FIELDS)
-                if (run.started_at && run.finished_at) {
-                    run.duration = duration(run)
-                }
-            }
-            commit('load_runs', runs)
+            await load_runs(commit, '/api/runs', newest)
         },
         async load_run({ commit }, run_id) {
             const [[run, job], logs] = await Promise.all([

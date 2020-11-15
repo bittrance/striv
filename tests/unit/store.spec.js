@@ -106,13 +106,12 @@ describe('actions', () => {
         })
     })
 
-    describe('load_runs', () => {
+    describe('load_runs and load_job_runs', () => {
         let commit
 
         beforeEach(async () => {
             commit = jest.fn()
             fetchMock.get('path:/api/runs', { 'run-1': run1, 'run-2': run2 })
-            fetchMock.get('path:/api/jobs', { 'job-1': job })
             await store.actions.load_runs({ commit })
         })
 

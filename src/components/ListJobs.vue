@@ -10,7 +10,9 @@
       <tbody>
         <tr v-for="[id, job] in jobs" :key="id">
           <th scope="row">
-            {{ job.name }}
+            <router-link :to="`/job/${id}`">
+              {{ job.name }}
+            </router-link>
           </th>
           <td>
             <span
@@ -21,9 +23,9 @@
             >
           </td>
           <td class="text-right">
-            <router-link v-bind:to="'/job/' + id"
-              ><i class="fas fa-edit text-primary"></i
-            ></router-link>
+            <router-link :to="`/job/${id}/modify`">
+              <i class="fas fa-edit text-primary" />
+            </router-link>
           </td>
         </tr>
       </tbody>

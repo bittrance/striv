@@ -22,10 +22,17 @@ describe('ListJobs', () => {
         expect(wrapper.text()).toContain('job2')
     })
 
-    it('includes link to job view for each job', () => {
+    it('includes link to view jobs', () => {
         let wrapper = mount(ListJobs, options)
-        let links = wrapper.findAllComponents('router-link')
-        expect(wrapper.text()).toContain('/job/1')
-        expect(wrapper.text()).toContain('/job/2')
+        wrapper.findAllComponents('router-link')
+        expect(wrapper.text()).toContain('/job/1 ')
+        expect(wrapper.text()).toContain('/job/2 ')
+    })
+
+    it('includes link to edit jobs', () => {
+        let wrapper = mount(ListJobs, options)
+        wrapper.findAllComponents('router-link')
+        expect(wrapper.text()).toContain('/job/1/modify')
+        expect(wrapper.text()).toContain('/job/2/modify')
     })
 })
