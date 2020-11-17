@@ -1,5 +1,8 @@
+import { createToastInterface } from "vue-toastification";
+
 const JOB_DATE_FIELDS = ['modified_at']
 const RUN_DATE_FIELDS = ['created_at', 'started_at', 'finished_at']
+const TOAST_OPTIONS = { timeout: 3000 }
 
 function iso_string_to_date(obj, props) {
     for (const prop of props) {
@@ -20,20 +23,29 @@ function duration(run) {
     return response;
 }
 
-async function load_runs(commit, base_url, newest) {
+async function load_runs(commit, state, base_url, newest) {
     let url = `${base_url}?limit=20`
     if (newest) {
         url += `&upper=${encodeURIComponent(newest.toISOString())}`
     }
-    const response = await fetch(url)
-    const runs = await response.json()
-    for (const run of Object.values(runs)) {
-        iso_string_to_date(run, RUN_DATE_FIELDS)
-        if (run.started_at && run.finished_at) {
-            run.duration = duration(run)
+    try {
+        const response = await fetch(url)
+        if (response.ok) {
+            const runs = await response.json()
+            for (const run of Object.values(runs)) {
+                iso_string_to_date(run, RUN_DATE_FIELDS)
+                if (run.started_at && run.finished_at) {
+                    run.duration = duration(run)
+                }
+            }
+            commit('load_runs', runs)
+        } else {
+            const message = await response.text()
+            state.toast.error(message, TOAST_OPTIONS)
         }
+    } catch (error) {
+        state.toast.error(error, TOAST_OPTIONS)
     }
-    commit('load_runs', runs)
 }
 
 
@@ -50,6 +62,7 @@ export default {
             runs: {},
             current_run: {},
             current_run_logs: {},
+            toast: createToastInterface(),
         }
     },
     mutations: {
@@ -80,38 +93,74 @@ export default {
         },
     },
     actions: {
-        async load_state({ commit }) {
-            const response = await fetch('/api/state')
-            const state = await response.json()
-            commit('load_state', state)
-        },
-        async current_job({ commit }, job) {
-            commit('current_job', job)
-            let response = await fetch("/api/jobs/evaluate", {
-                method: "POST",
-                headers: { "Content-type": "application/json" },
-                body: JSON.stringify(job),
-            })
-            let evaluation = await response.json();
-            commit('current_job_evaluation', evaluation)
-        },
-        async load_job({ commit }, job_id) {
-            const response = await fetch(`/api/job/${job_id}`)
-            let job = await response.json()
-            iso_string_to_date(job, JOB_DATE_FIELDS)
-            commit('current_job', job)
-            commit('current_job_id', job_id)
-        },
-        async load_job_runs({ commit }, { job_id, newest }) {
-            await load_runs(commit, `/api/job/${job_id}/runs`, newest)
-        },
-        async load_jobs({ commit }) {
-            const response = await fetch('/api/jobs')
-            const jobs = await response.json()
-            for (const job of Object.values(jobs)) {
-                iso_string_to_date(job, JOB_DATE_FIELDS)
+        async load_state({ commit, state }) {
+            try {
+                const response = await fetch('/api/state')
+                if (response.ok) {
+                    const state = await response.json()
+                    commit('load_state', state)
+                } else {
+                    const message = await response.text()
+                    state.toast.error(message, TOAST_OPTIONS)
+                }
+            } catch (error) {
+                state.toast.error(error, TOAST_OPTIONS)
             }
-            commit('load_jobs', jobs)
+        },
+        async current_job({ commit, state }, job) {
+            commit('current_job', job)
+            try {
+                let response = await fetch("/api/jobs/evaluate", {
+                    method: "POST",
+                    headers: { "Content-type": "application/json" },
+                    body: JSON.stringify(job),
+                })
+                if (response.status < 500) {
+                    let evaluation = await response.json();
+                    commit('current_job_evaluation', evaluation)
+                } else {
+                    let message = await response.text();
+                    state.toast.error(message, TOAST_OPTIONS)
+                }
+            } catch (error) {
+                state.toast.error(error, TOAST_OPTIONS)
+            }
+        },
+        async load_job({ commit, state }, job_id) {
+            try {
+                const response = await fetch(`/api/job/${job_id}`)
+                if (response.ok) {
+                    const job = await response.json()
+                    iso_string_to_date(job, JOB_DATE_FIELDS)
+                    commit('current_job', job)
+                    commit('current_job_id', job_id)
+                } else {
+                    const message = await response.text()
+                    state.toast.error(message, TOAST_OPTIONS)
+                }
+            } catch (error) {
+                state.toast.error(error, TOAST_OPTIONS)
+            }
+        },
+        async load_job_runs({ commit, state }, { job_id, newest }) {
+            await load_runs(commit, state, `/api/job/${job_id}/runs`, newest)
+        },
+        async load_jobs({ commit, state }) {
+            try {
+                const response = await fetch('/api/jobs')
+                if (response.ok) {
+                    const jobs = await response.json()
+                    for (const job of Object.values(jobs)) {
+                        iso_string_to_date(job, JOB_DATE_FIELDS)
+                    }
+                    commit('load_jobs', jobs)
+                } else {
+                    const message = await response.text()
+                    state.toast.error(message, TOAST_OPTIONS)
+                }
+            } catch (error) {
+                state.toast.error(error, TOAST_OPTIONS)
+            }
         },
         async store_current_job({ state }) {
             let url, method
@@ -119,38 +168,62 @@ export default {
                 url = `/api/job/${state.current_job_id}`
                 method = 'PUT'
             } else {
-                url = `/api/jobs`
+                url = '/api/jobs'
                 method = 'POST'
             }
             return await fetch(url, {
                 method: method,
-                headers: { "Content-type": "application/json" },
+                headers: { 'Content-type': 'application/json' },
                 body: JSON.stringify(state.current_job),
-            });
+            })
         },
-        async load_runs({ commit }, newest) {
-            await load_runs(commit, '/api/runs', newest)
+        async load_runs({ commit, state }, newest) {
+            await load_runs(commit, state, '/api/runs', newest)
         },
-        async load_run({ commit }, run_id) {
-            const [[run, job], logs] = await Promise.all([
-                fetch(`/api/run/${run_id}`)
-                    .then((response) => response.json())
-                    .then(async (run) => [
-                        run,
-                        await fetch(`/api/job/${run.job_id}`)
-                            .then((response) => response.json())
-                    ]),
-                fetch(`/api/run/${run_id}/logs`)
-                    .then((response) => response.json()),
-            ])
-            iso_string_to_date(run, RUN_DATE_FIELDS)
-            if (run.started_at && run.finished_at) {
-                run.duration = duration(run)
+        async load_run({ commit, state }, run_id) {
+            let run, job, logs
+            try {
+                [[run, job], logs] = await Promise.all([
+                    fetch(`/api/run/${run_id}`)
+                        .then(async (response) => {
+                            if (response.ok) {
+                                const run = await response.json()
+                                response = await fetch(`/api/job/${run.job_id}`)
+                                if (response.ok) {
+                                    return [run, await response.json()]
+                                } else {
+                                    const message = await response.text()
+                                    state.toast.error(message, TOAST_OPTIONS)
+                                }
+                            } else {
+                                const message = await response.text()
+                                state.toast.error(message, TOAST_OPTIONS)
+                            }
+                        }),
+                    fetch(`/api/run/${run_id}/logs`)
+                        .then(async (response) => {
+                            if (response.ok) {
+                                return await response.json()
+                            } else {
+                                const message = await response.text()
+                                state.toast.error(message, TOAST_OPTIONS)
+                            }
+                        }),
+                ])
+            } catch (error) {
+                state.toast.error(error, TOAST_OPTIONS)
+                return
             }
-            commit('current_run', run)
-            commit('current_run_logs', logs)
-            commit('current_job', job)
-            commit('current_job_id', run.job_id)
+            if (run != undefined && job != undefined && logs != undefined) {
+                iso_string_to_date(run, RUN_DATE_FIELDS)
+                if (run.started_at && run.finished_at) {
+                    run.duration = duration(run)
+                }
+                commit('current_run', run)
+                commit('current_run_logs', logs)
+                commit('current_job', job)
+                commit('current_job_id', run.job_id)
+            }
         },
     }
 }
