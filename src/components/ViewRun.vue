@@ -12,7 +12,7 @@
           <div>
             {{ job.name }}
             <router-link
-              :to="`/job/${run.job_id}`"
+              :to="`/job/${run.job_id}/modify`"
               class="btn text-primary mb-1"
               ><i class="fas fa-edit"></i
             ></router-link>

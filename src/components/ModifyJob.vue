@@ -50,7 +50,7 @@
 </template>
 
 <script>
-import { useToast } from "vue-toastification";
+import { createToastInterface } from "vue-toastification";
 import DimensionsSelector from "@/components/DimensionsSelector.vue";
 import ParamsEditor from "./ParamsEditor.vue";
 import ValidationErrors from "./ValidationErrors.vue";
@@ -94,7 +94,7 @@ export default {
     };
   },
   setup() {
-    return { toast: useToast() };
+    return { toast: createToastInterface() };
   },
   mounted() {
     this.$store.dispatch("load_state");
