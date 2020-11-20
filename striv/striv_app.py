@@ -30,6 +30,24 @@ handler.setFormatter(logging.Formatter(
 logger.addHandler(handler)
 
 
+def error_handler(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except HTTPResponse as response:
+            return response
+        except Exception as err:
+            logger.warning('Exception raised [err=%s]', err)
+            return HTTPResponse(
+                body=json.dumps({
+                    'title': 'Internal server error',
+                }),
+                status=500,
+                headers={'Content-type': 'application/json'}
+            )
+    return wrapper
+
+
 def cors_headers(func):
     '''
     '''
@@ -80,6 +98,7 @@ def templating_validation(func):
     return wrapper
 
 
+app.install(error_handler)
 app.install(cors_headers)
 app.install(marshmallow_validation)
 app.install(templating_validation)
@@ -302,10 +321,14 @@ def get_run_log(run_id):
     try:
         return logstore.fetch_logs(execution['driver_config'], run_id)
     except errors.RunNotFound as err:
-        return HTTPResponse(status=410, body=json.dumps({
-            'title': 'run not found',
-            'detail': str(err),
-        }))
+        return HTTPResponse(
+            status=410,
+            body=json.dumps({
+                'title': 'run not found',
+                'detail': str(err),
+            }),
+            headers={'Content-type': 'application/json'},
+        )
 
 
 @app.get('/state')

@@ -356,9 +356,10 @@ class TestGetRunLog:
         response = app.get('/run/run-1/logs')
         assert response.json == {'run-1/stderr': 'ze-log'}
 
-    def test_says_run_is_gone(self, app, logstore):
+    def test_says_run_is_gone_in_json(self, app, logstore):
         logstore.logs = errors.RunNotFound('boom!')
-        app.get('/run/run-1/logs', status=410)
+        response = app.get('/run/run-1/logs', status=410)
+        assert response.json['detail'] == 'boom!'
 
 
 @pytest.mark.usefixtures('basicdb')
