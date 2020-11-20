@@ -95,7 +95,7 @@ export default {
     actions: {
         async load_state({ commit, state }) {
             try {
-                const response = await fetch('/api/state')
+                const response = await fetch('/state')
                 if (response.ok) {
                     const state = await response.json()
                     commit('load_state', state)
@@ -110,7 +110,7 @@ export default {
         async current_job({ commit, state }, job) {
             commit('current_job', job)
             try {
-                let response = await fetch("/api/jobs/evaluate", {
+                let response = await fetch("/jobs/evaluate", {
                     method: "POST",
                     headers: { "Content-type": "application/json" },
                     body: JSON.stringify(job),
@@ -128,7 +128,7 @@ export default {
         },
         async load_job({ commit, state }, job_id) {
             try {
-                const response = await fetch(`/api/job/${job_id}`)
+                const response = await fetch(`/job/${job_id}`)
                 if (response.ok) {
                     const job = await response.json()
                     iso_string_to_date(job, JOB_DATE_FIELDS)
@@ -143,11 +143,11 @@ export default {
             }
         },
         async load_job_runs({ commit, state }, { job_id, newest }) {
-            await load_runs(commit, state, `/api/job/${job_id}/runs`, newest)
+            await load_runs(commit, state, `/job/${job_id}/runs`, newest)
         },
         async load_jobs({ commit, state }) {
             try {
-                const response = await fetch('/api/jobs')
+                const response = await fetch('/jobs')
                 if (response.ok) {
                     const jobs = await response.json()
                     for (const job of Object.values(jobs)) {
@@ -165,10 +165,10 @@ export default {
         async store_current_job({ state }) {
             let url, method
             if (state.current_job_id) {
-                url = `/api/job/${state.current_job_id}`
+                url = `/job/${state.current_job_id}`
                 method = 'PUT'
             } else {
-                url = '/api/jobs'
+                url = '/jobs'
                 method = 'POST'
             }
             return await fetch(url, {
@@ -178,17 +178,17 @@ export default {
             })
         },
         async load_runs({ commit, state }, newest) {
-            await load_runs(commit, state, '/api/runs', newest)
+            await load_runs(commit, state, '/runs', newest)
         },
         async load_run({ commit, state }, run_id) {
             let run, job, logs
             try {
                 [[run, job], logs] = await Promise.all([
-                    fetch(`/api/run/${run_id}`)
+                    fetch(`/run/${run_id}`)
                         .then(async (response) => {
                             if (response.ok) {
                                 const run = await response.json()
-                                response = await fetch(`/api/job/${run.job_id}`)
+                                response = await fetch(`/job/${run.job_id}`)
                                 if (response.ok) {
                                     return [run, await response.json()]
                                 } else {
@@ -200,7 +200,7 @@ export default {
                                 state.toast.error(message, TOAST_OPTIONS)
                             }
                         }),
-                    fetch(`/api/run/${run_id}/logs`)
+                    fetch(`/run/${run_id}/logs`)
                         .then(async (response) => {
                             if (response.ok) {
                                 return await response.json()

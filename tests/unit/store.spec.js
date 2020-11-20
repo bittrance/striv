@@ -35,7 +35,7 @@ describe('actions', () => {
 
     describe('load_state', () => {
         it('returns the state', async () => {
-            fetchMock.get('path:/api/state', { some: 'state' })
+            fetchMock.get('path:/state', { some: 'state' })
             await store.actions.load_state({ commit, state })
             expect(commit).toHaveBeenCalledWith('load_state', { some: 'state' })
             expect(state.toast.error).not.toHaveBeenCalled()
@@ -43,13 +43,13 @@ describe('actions', () => {
 
         describe('when fetch errors', () => {
             it('does not commit the state', async () => {
-                fetchMock.get('path:/api/state', { status: 500, body: { bad: 'ness' } })
+                fetchMock.get('path:/state', { status: 500, body: { bad: 'ness' } })
                 await store.actions.load_state({ commit, state })
                 expect(state.toast.error).toHaveBeenCalled()
             })
 
             it('toasts the error', async () => {
-                fetchMock.get('path:/api/state', { throws: new Error('boom!') })
+                fetchMock.get('path:/state', { throws: new Error('boom!') })
                 await store.actions.load_state({ commit, state })
                 expect(state.toast.error).toHaveBeenCalled()
             })
@@ -58,7 +58,7 @@ describe('actions', () => {
 
     describe('current_job', () => {
         it('commits the new job and the evaluated evaluation', async () => {
-            fetchMock.post('path:/api/jobs/evaluate', evaluation)
+            fetchMock.post('path:/jobs/evaluate', evaluation)
             await store.actions.current_job({ commit, state }, job)
             expect(commit).toHaveBeenCalledWith('current_job', job)
             expect(commit).toHaveBeenCalledWith('current_job_evaluation', evaluation)
@@ -69,7 +69,7 @@ describe('actions', () => {
             let failure = { invalid: true }
 
             it('commits the new job and the evaluated evaluation', async () => {
-                fetchMock.post('path:/api/jobs/evaluate', { status: 400, body: failure })
+                fetchMock.post('path:/jobs/evaluate', { status: 400, body: failure })
                 await store.actions.current_job({ commit, state }, job)
                 expect(commit).toHaveBeenCalledWith('current_job', job)
                 expect(commit).toHaveBeenCalledWith('current_job_evaluation', failure)
@@ -79,14 +79,14 @@ describe('actions', () => {
 
         describe('when the evaluation breaks', () => {
             it('does not commit on server-side failure', async () => {
-                fetchMock.post('path:/api/jobs/evaluate', { status: 500, body: { bad: 'ness' } })
+                fetchMock.post('path:/jobs/evaluate', { status: 500, body: { bad: 'ness' } })
                 await store.actions.current_job({ commit, state }, job)
                 expect(commit).toHaveBeenCalledWith('current_job', job)
                 expect(commit).not.toHaveBeenCalledWith('current_job_evaluation', expect.anything())
             })
 
             it('toasts the error', async () => {
-                fetchMock.post('path:/api/jobs/evaluate', { status: 500, body: { bad: 'ness' } })
+                fetchMock.post('path:/jobs/evaluate', { status: 500, body: { bad: 'ness' } })
                 await store.actions.current_job({ commit, state }, job)
                 expect(state.toast.error).toHaveBeenCalled()
             })
@@ -94,14 +94,14 @@ describe('actions', () => {
 
         describe('when fetch errors', () => {
             it('does not commit on client-side failure', async () => {
-                fetchMock.post('path:/api/jobs/evaluate', { throws: new Error('boom!') })
+                fetchMock.post('path:/jobs/evaluate', { throws: new Error('boom!') })
                 await store.actions.current_job({ commit, state }, job)
                 expect(commit).toHaveBeenCalledWith('current_job', job)
                 expect(commit).not.toHaveBeenCalledWith('current_job_evaluation', expect.anything())
             })
 
             it('toasts the error', async () => {
-                fetchMock.post('path:/api/jobs/evaluate', { throws: new Error('boom!') })
+                fetchMock.post('path:/jobs/evaluate', { throws: new Error('boom!') })
                 await store.actions.current_job({ commit, state }, job)
                 expect(state.toast.error).toHaveBeenCalled()
             })
@@ -110,7 +110,7 @@ describe('actions', () => {
 
     describe('load_job', () => {
         it('loads a single job', async () => {
-            fetchMock.get('path:/api/job/job-1', job)
+            fetchMock.get('path:/job/job-1', job)
             await store.actions.load_job({ commit, state }, 'job-1')
             expect(commit).toHaveBeenCalledWith(
                 'current_job',
@@ -120,7 +120,7 @@ describe('actions', () => {
         })
 
         it('converts ISO date strings to date objects', async () => {
-            fetchMock.get('path:/api/job/job-1', job)
+            fetchMock.get('path:/job/job-1', job)
             await store.actions.load_job({ commit, state }, 'job-1')
             expect(commit).toHaveBeenCalledWith(
                 'current_job',
@@ -130,13 +130,13 @@ describe('actions', () => {
 
         describe('when backend errors', () => {
             it('does not commit jobs', async () => {
-                fetchMock.get('path:/api/job/job-1', { status: 500, body: { bad: 'ness' } })
+                fetchMock.get('path:/job/job-1', { status: 500, body: { bad: 'ness' } })
                 await store.actions.load_job({ commit, state }, 'job-1')
                 expect(commit).not.toHaveBeenCalled()
             })
 
             it('toasts the error', async () => {
-                fetchMock.get('path:/api/job/job-1', { status: 500, body: { bad: 'ness' } })
+                fetchMock.get('path:/job/job-1', { status: 500, body: { bad: 'ness' } })
                 await store.actions.load_job({ commit, state }, 'job-1')
                 expect(state.toast.error).toHaveBeenCalled()
             })
@@ -144,13 +144,13 @@ describe('actions', () => {
 
         describe('when fetch errors', () => {
             it('does not commit jobs', async () => {
-                fetchMock.get('path:/api/job/job-1', { throws: new Error('boom!') })
+                fetchMock.get('path:/job/job-1', { throws: new Error('boom!') })
                 await store.actions.load_job({ commit, state }, 'job-1')
                 expect(commit).not.toHaveBeenCalled()
             })
 
             it('toasts the error', async () => {
-                fetchMock.get('path:/api/job/job-1', { throws: new Error('boom!') })
+                fetchMock.get('path:/job/job-1', { throws: new Error('boom!') })
                 await store.actions.load_job({ commit, state }, 'job-1')
                 expect(state.toast.error).toHaveBeenCalled()
             })
@@ -159,7 +159,7 @@ describe('actions', () => {
 
     describe('load_jobs', () => {
         it('loads a single job', async () => {
-            fetchMock.get('path:/api/jobs', { 'job-1': job })
+            fetchMock.get('path:/jobs', { 'job-1': job })
             await store.actions.load_jobs({ commit, state })
             expect(commit).toHaveBeenCalledWith(
                 'load_jobs',
@@ -171,13 +171,13 @@ describe('actions', () => {
 
         describe('when backend errors', () => {
             it('does not commit jobs', async () => {
-                fetchMock.get('path:/api/jobs', { status: 500, body: { bad: 'ness' } })
+                fetchMock.get('path:/jobs', { status: 500, body: { bad: 'ness' } })
                 await store.actions.load_jobs({ commit, state })
                 expect(commit).not.toHaveBeenCalled()
             })
 
             it('toasts the error', async () => {
-                fetchMock.get('path:/api/jobs', { status: 500, body: { bad: 'ness' } })
+                fetchMock.get('path:/jobs', { status: 500, body: { bad: 'ness' } })
                 await store.actions.load_jobs({ commit, state })
                 expect(state.toast.error).toHaveBeenCalled()
             })
@@ -185,13 +185,13 @@ describe('actions', () => {
 
         describe('when fetch errors', () => {
             it('does not commit jobs', async () => {
-                fetchMock.get('path:/api/jobs', { throws: new Error('boom!') })
+                fetchMock.get('path:/jobs', { throws: new Error('boom!') })
                 await store.actions.load_jobs({ commit, state })
                 expect(commit).not.toHaveBeenCalled()
             })
 
             it('toasts the error', async () => {
-                fetchMock.get('path:/api/jobs', { throws: new Error('boom!') })
+                fetchMock.get('path:/jobs', { throws: new Error('boom!') })
                 await store.actions.load_jobs({ commit, state })
                 expect(state.toast.error).toHaveBeenCalled()
             })
@@ -202,7 +202,7 @@ describe('actions', () => {
         beforeEach(() => state.current_job = job)
 
         it('persists the current job as a new job', async () => {
-            fetchMock.post('path:/api/jobs', job)
+            fetchMock.post('path:/jobs', job)
             await store.actions.store_current_job({ commit, state })
             expect(fetchMock).toHaveFetched((url, req) => {
                 expect(JSON.parse(req.body)).toHaveProperty('name', 'ze-name')
@@ -217,7 +217,7 @@ describe('actions', () => {
             })
 
             it('updates the existing job', async () => {
-                fetchMock.put('path:/api/job/job-1', '')
+                fetchMock.put('path:/job/job-1', '')
                 await store.actions.store_current_job({ state })
                 expect(fetchMock).toHaveFetched()
             })
@@ -226,7 +226,7 @@ describe('actions', () => {
 
     describe('load_runs and load_job_runs', () => {
         beforeEach(() => {
-            fetchMock.get('path:/api/runs', { 'run-1': run1, 'run-2': run2 })
+            fetchMock.get('path:/runs', { 'run-1': run1, 'run-2': run2 })
         })
 
         it('loads the runs', async () => {
@@ -262,13 +262,13 @@ describe('actions', () => {
 
         describe('when backend errors', () => {
             it('does not commit runs', async () => {
-                fetchMock.get('path:/api/runs', { status: 500, body: { bad: 'ness' } })
+                fetchMock.get('path:/runs', { status: 500, body: { bad: 'ness' } })
                 await store.actions.load_runs({ commit, state })
                 expect(commit).not.toHaveBeenCalled()
             })
 
             it('toasts the error', async () => {
-                fetchMock.get('path:/api/runs', { status: 500, body: { bad: 'ness' } })
+                fetchMock.get('path:/runs', { status: 500, body: { bad: 'ness' } })
                 await store.actions.load_runs({ commit, state })
                 expect(state.toast.error).toHaveBeenCalled()
             })
@@ -276,13 +276,13 @@ describe('actions', () => {
 
         describe('when fetch errors', () => {
             it('does not commit runs', async () => {
-                fetchMock.get('path:/api/runs', { throws: new Error('boom!') })
+                fetchMock.get('path:/runs', { throws: new Error('boom!') })
                 await store.actions.load_runs({ commit, state })
                 expect(commit).not.toHaveBeenCalled()
             })
 
             it('toasts the error', async () => {
-                fetchMock.get('path:/api/runs', { throws: new Error('boom!') })
+                fetchMock.get('path:/runs', { throws: new Error('boom!') })
                 await store.actions.load_runs({ commit, state })
                 expect(state.toast.error).toHaveBeenCalled()
             })
@@ -291,9 +291,9 @@ describe('actions', () => {
 
     describe('load_run', () => {
         beforeEach(async () => {
-            fetchMock.get('path:/api/run/run-1', run1)
-            fetchMock.get('path:/api/run/run-1/logs', logs1)
-            fetchMock.get('path:/api/job/job-1', job)
+            fetchMock.get('path:/run/run-1', run1)
+            fetchMock.get('path:/run/run-1/logs', logs1)
+            fetchMock.get('path:/job/job-1', job)
         })
 
         it('commits the run and its logs', async () => {
@@ -326,9 +326,9 @@ describe('actions', () => {
         })
 
         describe.each([
-            ['path:/api/run/run-1'],
-            ['path:/api/run/run-1/logs'],
-            ['path:/api/job/job-1'],
+            ['path:/run/run-1'],
+            ['path:/run/run-1/logs'],
+            ['path:/job/job-1'],
         ])(`when %s fails`, (endpoint) => {
             it('does not commit jobs', async () => {
                 fetchMock.get(endpoint, { status: 500, body: { bad: 'ness' } })
@@ -344,9 +344,9 @@ describe('actions', () => {
         })
 
         describe.each([
-            ['path:/api/run/run-1'],
-            ['path:/api/run/run-1/logs'],
-            ['path:/api/job/job-1'],
+            ['path:/run/run-1'],
+            ['path:/run/run-1/logs'],
+            ['path:/job/job-1'],
         ])(`when client errors on %s`, (endpoint) => {
             it('does not commit jobs', async () => {
                 fetchMock.get(endpoint, { throws: new Error('boom!') })

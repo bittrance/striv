@@ -2,9 +2,8 @@ module.exports = {
     configureWebpack: {
         devServer: {
             proxy: {
-                '/api': {
+                '/state|/job|/run': {
                     target: 'http://localhost:8081/',
-                    pathRewrite: { '^/api': '' },
                 }
             }
         }

@@ -3,14 +3,16 @@
 import base64
 import json
 import logging
+import os.path
 import sys
+import tempfile
 import urllib.parse
 import uuid
 from argparse import ArgumentParser
 from datetime import datetime, timezone
 
 import marshmallow
-from bottle import Bottle, HTTPResponse, request, response
+from bottle import Bottle, HTTPResponse, request, response, static_file
 from striv import errors, schemas, templating
 
 DEFAULT_LIMIT = 1000
@@ -141,6 +143,16 @@ def _range_and_adjusted_limit(request):
     limit = int(request.query.get('limit', DEFAULT_LIMIT))
     limit = min(limit, DEFAULT_LIMIT) + 1
     return (rnge, limit)
+
+
+@app.get('/')
+def index():
+    return static_file('index.html', root='dist')
+
+
+@app.get('/<path:re:(css/|js/|favicon.ico).*>')
+def static_files(path):
+    return static_file(path, root='dist')
 
 
 @app.get('/jobs')
@@ -337,23 +349,16 @@ def load_state():
     return changes
 
 
-def main():
-    '''
-    Developer entrypoint.
-    '''
-    parser = ArgumentParser(
-        description='Start striv with auto reload and debug')
-    parser.add_argument('--bottle-host', default='localhost',
-                        help="'0.0.0.0' for ALL interfaces")
-    parser.add_argument('--bottle-port', default=8080)
-    parser.add_argument('--database', default=':memory:',
-                        help="SQLite db file")
-    parser.add_argument('--log-level', default='WARNING',
-                        help='One of DEBUG, INFO, WARNING or ERROR')
-    args = parser.parse_args()
+parser = ArgumentParser(
+    description='Start striv with auto reload and debug')
+parser.add_argument('--database', default=os.path.join(tempfile.gettempdir(), 'state.db'),
+                    help="SQLite db file")
+parser.add_argument('--log-level', default='WARNING',
+                    help='One of DEBUG, INFO, WARNING or ERROR')
 
+
+def configure(args):
     logger.setLevel(args.log_level)
-
     from striv import nomad_backend, nomad_logstore, sqlite_store  # pylint: disable = import-outside-toplevel
     global backends, logstores, store
     store = sqlite_store
@@ -370,9 +375,25 @@ def main():
             'run': lambda run: run['created_at']
         }
     )
-    app.run(host=args.bottle_host, reloader=True,
-            port=args.bottle_port, debug=True)
+
+
+CONFIGURED = False
+
+
+def entrypoint(environ, start_response):
+    global CONFIGURED
+    if not CONFIGURED:
+        args = parser.parse_args()
+        configure(args)
+        CONFIGURED = True
+    return app(environ, start_response)
 
 
 if __name__ == '__main__':
-    main()
+    parser.add_argument('--bottle-host', default='localhost',
+                        help="'0.0.0.0' for ALL interfaces")
+    parser.add_argument('--bottle-port', default=8080)
+    args = parser.parse_args()
+    configure(args)
+    app.run(host=args.bottle_host, reloader=True,
+            port=args.bottle_port, debug=True)
