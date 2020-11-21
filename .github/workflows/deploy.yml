@@ -28,8 +28,10 @@ jobs:
         run: |
           npm run build
           apk add docker
-          docker build -t striv .
+          docker build -t bittrance/striv .
       - name: Deploy
+        env:
+          DOCKER_SECRET: ${{ secrets.DOCKER_SECRET }}
         run: |
           echo "$DOCKER_SECRET" | docker login --username bittrance --password-stdin
-          docker push -t striv bittrance/striv
+          docker push bittrance/striv
