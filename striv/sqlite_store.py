@@ -112,8 +112,9 @@ def find_entities(typ, related_to=None, limit=None, range=None):
         query += ' ORDER BY sortkey %s' % order
     if limit is not None:
         query += ' LIMIT %d' % limit
-    result = _cursor().execute(query, args)
-    return dict((typed_id[len(typ) + 1:], json.loads(entity)) for (typed_id, entity) in result)
+    cur = _cursor()
+    cur.execute(query, args)
+    return dict((typed_id[len(typ) + 1:], json.loads(entity)) for (typed_id, entity) in cur)
 
 
 def upsert_entities(*entities):
@@ -146,12 +147,14 @@ def replace_type(typ, entities):
     Drop all entities of one type, and replace them with the provided
     list.
     '''
-    delete_res = _cursor().execute(
+    delete_cur = _cursor()
+    delete_cur.execute(
         'DELETE FROM entities WHERE typed_id LIKE ?',
         [typ + ':%']
     )
     insert = 'INSERT INTO entities (typed_id, entity) VALUES (?, ?)'
     rows = (('%s:%s' % (typ, eid), json.dumps(entity))
             for (eid, entity) in entities.items())
-    insert_res = _cursor().executemany(insert, rows)
-    return (delete_res.rowcount, insert_res.rowcount)
+    insert_cur = _cursor()
+    insert_cur.executemany(insert, rows)
+    return (delete_cur.rowcount, insert_cur.rowcount)
