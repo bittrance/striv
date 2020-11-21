@@ -1,5 +1,8 @@
 name: Python package
-on: [push]
+on:
+  push:
+    branches:
+      - master
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -13,6 +16,18 @@ jobs:
         run: |
           apk add --no-cache python3 python3-dev py3-pip linux-headers make g++
           pip install -r requirements-dev.txt
-      - name: Test with pytest
+          apk add --no-cache nodejs npm
+          npm install
+      - name: Test frontend
+        run: |
+          npm run test:unit
+      - name: Test backend
         run: |
           pytest test/
+      - name: Build Docker image
+        run: |
+          docker build -t striv .
+      - name: Deploy
+        run: |
+          echo "$DOCKER_SECRET" | docker login --username bittrance --password-stdin
+          docker push -t striv bittrance/striv
