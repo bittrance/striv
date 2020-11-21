@@ -1,4 +1,4 @@
-name: Python package
+name: Deploy striv
 on:
   push:
     branches:
@@ -7,14 +7,23 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container: alpine:3.12
-    # strategy:
-    #   matrix:
-    #     python-version: [3.7]
     steps:
       - uses: actions/checkout@v2
+      - name: Cache node modules
+        uses: actions/cache@v2
+        with:
+          path: ~/.npm
+          key: striv-npm-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: striv-npm-
+      - name: Cache pip
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: striv-pip-${{ hashFiles('requirements*.txt') }}
+          restore-keys: striv-pip-
       - name: Install dependencies
         run: |
-          apk add python3 python3-dev py3-pip linux-headers make g++
+          apk add python3 python3-dev py3-pip py3-wheel linux-headers make g++
           pip install -r requirements-dev.txt
           apk add nodejs npm
           npm install
@@ -35,3 +44,6 @@ jobs:
         run: |
           echo "$DOCKER_SECRET" | docker login --username bittrance --password-stdin
           docker push bittrance/striv
+      - name: Cache dependencies
+        run: |
+          apk add tar
