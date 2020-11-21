@@ -1,9 +1,13 @@
-export function compactDateTime(date, now) {
+export function compactDateTime(date, testNow) {
+    let now, timeZone
     if (date == undefined) {
         return undefined
     }
-    if (now == undefined) {
+    if (testNow == undefined) {
         now = new Date()
+        timeZone = undefined
+    } else {
+        [now, timeZone] = testNow
     }
     const delta = (
         new Date(now.getFullYear(), now.getMonth(), now.getDate()) -
@@ -12,20 +16,20 @@ export function compactDateTime(date, now) {
     if (delta < 1) {
         return 'Today ' + date.toLocaleString(
             'en-GB',
-            { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }
+            { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone }
         )
     } else if (delta < 7) {
         return date.toLocaleString(
             'en-GB',
-            { weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }
+            { weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone }
         )
     } else if (delta < 365) {
         return date.toLocaleString(
             'en-GB',
-            { month: 'short', day: '2-digit' }
+            { month: 'short', day: '2-digit', timeZone }
         )
     } else {
-        return date.toLocaleDateString()
+        return date.toLocaleDateString('en-GB', { timeZone })
     }
 }
 

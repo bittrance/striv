@@ -1,7 +1,7 @@
 import { compactDateTime } from '@/formatting.js'
 
 describe('compactDateTime', () => {
-    const now = new Date('2020-11-04T18:21:09.731+0100')
+    const now = [new Date('2020-11-04T18:21:09.731+0100'), 'Europe/Stockholm']
     const today = new Date('2020-11-04T18:21:09.731Z')
 
     it('returns empty string for unknown date', () => {
