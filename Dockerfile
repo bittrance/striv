@@ -1,14 +1,18 @@
-FROM alpine:3.12 AS buildenv
+FROM ubuntu:20.04 AS buildenv
 
 COPY requirements.txt /requirements.txt
-RUN apk add --no-cache linux-headers make g++ python3-dev py3-pip py3-virtualenv
+RUN apt-get update && \
+    apt-get install --yes --no-install-recommends \
+    make g++ python3.8 python3.8-dev python3-virtualenv
 RUN virtualenv /venv
-RUN /bin/sh /venv/bin/activate
-RUN /venv/bin/pip3 install -r /requirements.txt
+RUN /bin/sh /venv/bin/activate && \
+    /venv/bin/pip install -r /requirements.txt
 
-FROM alpine:3.12
+FROM ubuntu:20.04
 
-RUN apk add --no-cache python3 libstdc++ && adduser -D -h /striv -s /bin/false striv
+RUN apt-get update && \
+    apt-get install --yes python3.8 libpython3.8 && \
+    useradd -d /striv -s /bin/false striv
 COPY striv /striv/striv
 COPY dist /striv/dist
 COPY --from=buildenv /venv /venv
