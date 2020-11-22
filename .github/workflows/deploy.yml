@@ -34,7 +34,9 @@ jobs:
       - name: Test backend
         run: |
           apk add docker-compose
-          docker-compose up -d
+          docker-compose up &
+          for s in 3 3 3 3 ; do nc -z 127.0.0.1 3306 && break ; sleep $s ; done
+          for s in 3 3 3 3 ; do nc -z 127.0.0.1 5432 && break ; sleep $s ; done
           pytest test/
           docker-compose down
       - name: Build Docker image
