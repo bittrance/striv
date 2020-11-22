@@ -19,11 +19,11 @@ describe('compactDateTime', () => {
 
     it('returns month and day for dates older than one week', () => {
         const last_week = new Date('2020-10-27T08:21:09.731Z')
-        expect(compactDateTime(last_week, now)).toEqual('Oct 27')
+        expect(compactDateTime(last_week, now)).toEqual('27 Oct')
     })
 
     it('returns ISO date for dates older than one year', () => {
         const last_year = new Date('2019-11-03T18:21:09.731Z')
-        expect(compactDateTime(last_year, now)).toEqual('11/3/2019')
+        expect(compactDateTime(last_year, now)).toEqual('03/11/2019')
     })
 })
