@@ -1,34 +1,20 @@
 import json
-import sqlite3
 
-ENTITY_TABLE_DEF = '''
-CREATE TABLE IF NOT EXISTS entities (
-    typed_id TEXT PRIMARY KEY,
-    sortkey TEXT,
-    entity TEXT
-)
-'''
-SORTKEY_INDEX_DEF = '''
-CREATE INDEX IF NOT EXISTS sortkey ON entities (sortkey)
-'''
-RELATION_TABLE_DEF = '''
-CREATE TABLE IF NOT EXISTS relations (
-    typed_id TEXT,
-    relation TEXT,
-    key TEXT
-)
-'''
-RELATION_INDEX_DEF = '''
-CREATE INDEX IF NOT EXISTS lookup ON relations (relation, key)
-'''
 
 CONN = None
+DRIVER = None
 RELATIONS = {}  # pylint: disable = dangerous-default-value
 SORTKEYS = {}  # pylint: disable = dangerous-default-value
 
 
 def _cursor():
     return CONN.cursor()
+
+
+def _maybe_qm(source):
+    if DRIVER == 'sqlite':
+        return source.replace('%s', '?')
+    return source
 
 
 def _prepare_entities(entities):
@@ -47,19 +33,28 @@ def _relation_keys(entities):
                 yield ('%s:%s' % (typ, eid), relation, key)
 
 
-def setup(database=':memory:', relations=None, sortkeys=None):
+# pylint: disable = import-outside-toplevel
+def setup(driver, connargs, relations=None, sortkeys=None):
     '''
     Setup the sqlite store. Defaults to creating an in-memory store.
     '''
-    global CONN, RELATIONS, SORTKEYS
+    global CONN, DRIVER, RELATIONS, SORTKEYS
     RELATIONS.update(relations or {})
     SORTKEYS.update(sortkeys or {})
-    CONN = sqlite3.connect(database)
-    CONN.isolation_level = None
-    _cursor().execute(ENTITY_TABLE_DEF)
-    _cursor().execute(SORTKEY_INDEX_DEF)
-    _cursor().execute(RELATION_TABLE_DEF)
-    _cursor().execute(RELATION_INDEX_DEF)
+    if driver == 'mysql':
+        from striv.rdbm_adapters import mysql
+        adapter = mysql
+    elif driver == 'postgres':
+        from striv.rdbm_adapters import postgres
+        adapter = postgres
+    elif driver == 'sqlite':
+        from striv.rdbm_adapters import sqlite
+        adapter = sqlite
+    else:
+        raise RuntimeError('Unknown database driver %s' % driver)
+    CONN = adapter.connection(connargs)
+    adapter.ensure_ddl(CONN)
+    DRIVER = driver
 
 
 def load_entities(*query):
@@ -70,13 +65,15 @@ def load_entities(*query):
     fail to retrieve an entity.
     '''
     typed_ids = ['%s:%s' % (typ, eid) for (typ, eid) in query]
-    qs = ','.join('?' * len(typed_ids))
-    result = _cursor().execute(
-        'SELECT typed_id, entity FROM entities WHERE typed_id IN (%s)' % qs,
+    qs = ','.join(['%s'] * len(typed_ids))
+    cur = _cursor()
+    cur.execute(
+        _maybe_qm(
+            'SELECT typed_id, entity FROM entities WHERE typed_id IN (%s)' % qs),
         typed_ids
     )
     candidates = {}
-    for (typed_id, entity) in result:
+    for (typed_id, entity) in cur:
         candidates[typed_id] = json.loads(entity)
     entities = []
     for typed_id in typed_ids:
@@ -94,26 +91,26 @@ def find_entities(typ, related_to=None, limit=None, range=None):
     entities in a certain sort order.
     '''
     if related_to:
-        flter = 'typed_id IN (SELECT typed_id FROM relations WHERE relation = ? AND key = ?)'
+        flter = 'typed_id IN (SELECT typed_id FROM relations WHERE relation = %s AND secondary_key = %s)'
         args = [*related_to]
     else:
-        flter = 'typed_id LIKE ?'
+        flter = 'typed_id LIKE %s'
         args = ['%s:%%' % typ]
     query = 'SELECT typed_id, entity FROM entities WHERE %s' % flter
     if range is not None:
         order, lower, upper = range
         assert order.upper() in ['ASC', 'DESC']
         if lower is not None:
-            query += ' AND sortkey >= ?'
+            query += ' AND sortkey >= %s'
             args += [lower]
         if upper is not None:
-            query += ' AND sortkey <= ?'
+            query += ' AND sortkey <= %s'
             args += [upper]
         query += ' ORDER BY sortkey %s' % order
     if limit is not None:
         query += ' LIMIT %d' % limit
     cur = _cursor()
-    cur.execute(query, args)
+    cur.execute(_maybe_qm(query), args)
     return dict((typed_id[len(typ) + 1:], json.loads(entity)) for (typed_id, entity) in cur)
 
 
@@ -124,21 +121,27 @@ def upsert_entities(*entities):
     jsonable value. Updates relations indexes as defined in the relations
     argument passed to setup.
     '''
-    replace_entities = '''
-    INSERT INTO entities (typed_id, sortkey, entity) VALUES (?, ?, ?)
-    ON CONFLICT(typed_id)
-    DO UPDATE SET sortkey = excluded.sortkey, entity = excluded.entity
-    '''
+    if DRIVER == 'mysql':
+        replace_entities = '''
+        INSERT INTO entities (typed_id, sortkey, entity) VALUES (%s, %s, %s)
+        ON DUPLICATE KEY UPDATE sortkey = VALUES(sortkey), entity = VALUES(entity)
+        '''
+    else:
+        replace_entities = '''
+        INSERT INTO entities (typed_id, sortkey, entity) VALUES (%s, %s, %s)
+        ON CONFLICT(typed_id)
+        DO UPDATE SET sortkey = excluded.sortkey, entity = excluded.entity
+        '''
     old_relations = '''
-    DELETE FROM relations WHERE typed_id = ?
+    DELETE FROM relations WHERE typed_id = %s
     '''
     new_relations = '''
-    INSERT INTO relations (typed_id, relation, key) VALUES (?, ?, ?)
+    INSERT INTO relations (typed_id, relation, secondary_key) VALUES (%s, %s, %s)
     '''
     ids = (('%s:%s' % (typ, eid),) for (typ, eid, _) in entities)
-    _cursor().executemany(replace_entities, _prepare_entities(entities))
-    _cursor().executemany(old_relations, ids)
-    _cursor().executemany(new_relations, _relation_keys(entities))
+    _cursor().executemany(_maybe_qm(replace_entities), list(_prepare_entities(entities)))
+    _cursor().executemany(_maybe_qm(old_relations), list(ids))
+    _cursor().executemany(_maybe_qm(new_relations), list(_relation_keys(entities)))
 
 
 # TODO: replace_type needs to know what index to chuck out
@@ -149,12 +152,14 @@ def replace_type(typ, entities):
     '''
     delete_cur = _cursor()
     delete_cur.execute(
-        'DELETE FROM entities WHERE typed_id LIKE ?',
+        _maybe_qm('DELETE FROM entities WHERE typed_id LIKE %s'),
         [typ + ':%']
     )
-    insert = 'INSERT INTO entities (typed_id, entity) VALUES (?, ?)'
     rows = (('%s:%s' % (typ, eid), json.dumps(entity))
             for (eid, entity) in entities.items())
     insert_cur = _cursor()
-    insert_cur.executemany(insert, rows)
+    insert_cur.executemany(
+        _maybe_qm('INSERT INTO entities (typed_id, entity) VALUES (%s, %s)'),
+        list(rows)
+    )
     return (delete_cur.rowcount, insert_cur.rowcount)

@@ -1,13 +1,18 @@
-# pylint: disable = missing-function-docstring, no-self-use, redefined-outer-name
+# pylint: disable = missing-class-docstring, missing-function-docstring, no-self-use, redefined-outer-name
 import pytest
 
 from hamcrest import *  # pylint: disable = unused-wildcard-import
-from striv import sqlite_store
+from striv import rdbm_store
+
+from . import rdbm_support
 
 
-@pytest.fixture()
-def store():
-    sqlite_store.setup(
+@pytest.fixture(params=rdbm_support.configurations)
+def store(request):
+    driver, connargs = request.param
+    rdbm_store.setup(
+        driver,
+        connargs,
         relations={
             'run': lambda run: [('job', run['job_id'])],
             'job': lambda job: [('dvalue', '%s:%s' % (n, v)) for (n, v) in job.get('dimensions', {}).items()]
@@ -16,7 +21,10 @@ def store():
             'job': lambda job: job['name'],
         }
     )
-    return sqlite_store
+    yield rdbm_store
+    # TODO: Teach replace_type about relations
+    rdbm_store.CONN.cursor().execute('DELETE FROM entities')
+    rdbm_store.CONN.cursor().execute('DELETE FROM relations')
 
 
 @pytest.fixture()
@@ -36,23 +44,32 @@ def five_jobs(store):
     )
 
 
-def test_roundtrip_sorted(store):
-    store.upsert_entities(('job', 'foo', {'name': 'foo'}))
-    store.upsert_entities(('job', 'bar', {'name': 'bar'}))
-    entities = store.load_entities(('job', 'foo'), ('job', 'bar'))
-    assert entities == [{'name': 'foo'}, {'name': 'bar'}]
-    entities = store.load_entities(('job', 'bar'), ('job', 'foo'))
-    assert entities == [{'name': 'bar'}, {'name': 'foo'}]
+@pytest.mark.usefixtures('five_jobs')
+class TestLoadEntities:
+    def test_roundtrip_sorted(self, store):
+        entities = store.load_entities(('job', 'job-01'), ('job', 'job-02'))
+        assert_that(
+            entities,
+            contains_exactly(
+                has_entry('name', 'job-01'),
+                has_entry('name', 'job-02'),
+            )
+        )
+        entities = store.load_entities(('job', 'job-02'), ('job', 'job-01'))
+        assert_that(
+            entities,
+            contains_exactly(
+                has_entry('name', 'job-02'),
+                has_entry('name', 'job-01'),
+            )
+        )
 
-
-def test_fails_on_missing(store):
-    store.upsert_entities(('job', 'foo', {'name': 'foo'}))
-    store.upsert_entities(('job', 'bar', {'name': 'bar'}))
-    assert_that(
-        calling(store.load_entities)
-        .with_args(('job', 'foo'), ('job', 'baz')),
-        raises(KeyError, pattern='job:baz')
-    )
+    def test_fails_on_missing(self, store):
+        assert_that(
+            calling(store.load_entities)
+            .with_args(('job', 'job-01'), ('job', 'job-10')),
+            raises(KeyError, pattern='job:job-10')
+        )
 
 
 @pytest.mark.usefixtures('five_jobs')
@@ -123,8 +140,8 @@ class TestFindEntities:
         assert list(found) == []
 
 
+@pytest.mark.usefixtures('five_jobs')
 def test_upsert_entities_updates_sortkey(store):
-    store.upsert_entities(('job', 'foo', {'name': 'foo'}))
-    store.upsert_entities(('job', 'foo', {'name': 'bar'}))
-    found = store.find_entities('job', range=('asc', None, 'bar'))
-    assert found.keys() == {'foo'}
+    store.upsert_entities(('job', 'job-01', {'name': 'job-00'}))
+    found = store.find_entities('job', range=('asc', None, 'job-00'))
+    assert found.keys() == {'job-01'}

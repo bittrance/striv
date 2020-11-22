@@ -374,21 +374,35 @@ def load_state():
 
 parser = ArgumentParser(
     description='Start striv with auto reload and debug')
-parser.add_argument('--database', default=os.path.join(tempfile.gettempdir(), 'state.db'),
-                    help="SQLite db file")
-parser.add_argument('--log-level', default='WARNING',
-                    help='One of DEBUG, INFO, WARNING or ERROR')
+parser.add_argument(
+    '--store-type',
+    default='sqlite',
+    help='One of mysql, postgres, sqlite',
+)
+parser.add_argument(
+    '--store-config',
+    default=json.dumps({
+        'database': os.path.join(tempfile.gettempdir(), 'state.db')
+    }),
+    help='JSON object with store config parameters',
+)
+parser.add_argument(
+    '--log-level',
+    default='WARNING',
+    help='One of DEBUG, INFO, WARNING or ERROR'
+)
 
 
 def configure(args):
     logger.setLevel(args.log_level)
-    from striv import nomad_backend, nomad_logstore, sqlite_store  # pylint: disable = import-outside-toplevel
+    from striv import nomad_backend, nomad_logstore, rdbm_store  # pylint: disable = import-outside-toplevel
     global backends, logstores, store
-    store = sqlite_store
+    store = rdbm_store
     backends['nomad'] = nomad_backend
     logstores['nomad'] = nomad_logstore
     store.setup(
-        database=args.database,
+        args.store_type,
+        json.loads(args.store_config),
         relations={
             'run': lambda run: [('job', run['job_id'])],
             'job': lambda job: [('dvalue', '%s:%s' % (n, v)) for (n, v) in job.get('dimensions', {}).items()]
@@ -403,7 +417,17 @@ def configure(args):
 CONFIGURED = False
 
 
-def entrypoint(environ, start_response):
+def dev_entrypoint():
+    parser.add_argument('--bottle-host', default='localhost',
+                        help="'0.0.0.0' for ALL interfaces")
+    parser.add_argument('--bottle-port', default=8080)
+    args = parser.parse_args()
+    configure(args)
+    app.run(host=args.bottle_host, reloader=True,
+            port=args.bottle_port, debug=True)
+
+
+def prod_entrypoint(environ, start_response):
     global CONFIGURED
     if not CONFIGURED:
         args = parser.parse_args()
@@ -413,10 +437,4 @@ def entrypoint(environ, start_response):
 
 
 if __name__ == '__main__':
-    parser.add_argument('--bottle-host', default='localhost',
-                        help="'0.0.0.0' for ALL interfaces")
-    parser.add_argument('--bottle-port', default=8080)
-    args = parser.parse_args()
-    configure(args)
-    app.run(host=args.bottle_host, reloader=True,
-            port=args.bottle_port, debug=True)
+    dev_entrypoint()

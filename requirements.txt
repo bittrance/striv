@@ -1,5 +1,7 @@
 bottle
 jsonnet
 marshmallow
+mysql-connector-python
+psycopg2-binary
 requests
 uwsgi

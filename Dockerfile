@@ -17,4 +17,4 @@ WORKDIR /striv
 
 EXPOSE  8080
 ENTRYPOINT ["/venv/bin/uwsgi"]
-CMD ["--http", ":8080", "--virtualenv", "/venv", "--wsgi-file", "/striv/striv/striv_app.py", "--callable", "entrypoint", "--processes", "4"]
+CMD ["--http", ":8080", "--virtualenv", "/venv", "--wsgi-file", "/striv/striv/striv_app.py", "--callable", "prod_entrypoint", "--processes", "4"]

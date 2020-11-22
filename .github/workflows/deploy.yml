@@ -32,7 +32,10 @@ jobs:
           npm run test:unit
       - name: Test backend
         run: |
+          apk add docker-compose
+          docker-compose up -d
           pytest test/
+          docker-compose down
       - name: Build Docker image
         run: |
           npm run build
