@@ -376,19 +376,27 @@ parser = ArgumentParser(
     description='Start striv with auto reload and debug')
 parser.add_argument(
     '--store-type',
-    default='sqlite',
+    default=os.environ.get(
+        'STRIV_STORE_TYPE',
+        'sqlite'
+    ),
     help='One of mysql, postgres, sqlite',
 )
 parser.add_argument(
     '--store-config',
-    default=json.dumps({
-        'database': os.path.join(tempfile.gettempdir(), 'state.db')
-    }),
+    default=os.environ.get(
+        'STRIV_STORE_CONFIG',
+        json.dumps({'database': os.path.join(
+            tempfile.gettempdir(), 'state.db')})
+    ),
     help='JSON object with store config parameters',
 )
 parser.add_argument(
     '--log-level',
-    default='WARNING',
+    default=os.environ.get(
+        'STRIV_LOG_LEVEL',
+        'WARNING'
+    ),
     help='One of DEBUG, INFO, WARNING or ERROR'
 )
 
