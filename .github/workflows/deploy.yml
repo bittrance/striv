@@ -24,7 +24,8 @@ jobs:
       - name: Install dependencies
         run: |
           apk add python3 python3-dev py3-pip py3-wheel linux-headers make g++
-          pip install -r requirements-dev.txt
+          echo 'manylinux1_compatible = True' > _manylinux.py
+          PYTHONPATH=. pip install -r requirements-dev.txt
           apk add nodejs npm
           npm install
       - name: Test frontend
