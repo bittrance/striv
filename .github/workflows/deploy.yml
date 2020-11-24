@@ -20,14 +20,17 @@ jobs:
           path: ~/.cache/pip
           key: striv-pip-${{ hashFiles('requirements*.txt') }}
           restore-keys: striv-pip-
-      - name: Set up Python
-        uses: actions/setup-python@v2
+      - uses: actions/setup-node@v2-beta
         with:
-          python-version: "3.7"
+          node-version: "15.3"
       - name: Test frontend
         run: |
           npm install
           npm run test:unit
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.7"
       - name: Test backend
         run: |
           docker-compose up &

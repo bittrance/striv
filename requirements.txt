@@ -1,4 +1,5 @@
 bottle
+cryptography
 jsonnet
 marshmallow
 mysql-connector-python
