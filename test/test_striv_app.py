@@ -1,4 +1,5 @@
 # pylint: disable = missing-class-docstring, missing-function-docstring, no-self-use, redefined-outer-name, too-few-public-methods
+import json
 import re
 from datetime import datetime
 
@@ -7,7 +8,7 @@ import pytest
 import webtest
 
 from hamcrest import *  # pylint: disable = unused-wildcard-import
-from striv import errors, striv_app, rdbm_store
+from striv import errors, striv_app
 
 from . import rdbm_support
 
@@ -37,8 +38,14 @@ A_JOB = {
 }
 
 A_RUN = {
-    'job_id': 'job-1'
+    'job_id': 'job-1',
+    'created_at': '2020-10-31T23:40:00+0000',
 }
+
+
+class Args:
+    def __init__(self, args):
+        self.__dict__.update(args)
 
 
 class RecordingBackend:
@@ -79,57 +86,50 @@ def logstore():
     return RecordingLogstore()
 
 
-@pytest.fixture()
-def app(backend, logstore):
-    striv_app.store = rdbm_store
-    striv_app.backends['nomad'] = backend
-    striv_app.logstores['nomad'] = logstore
+@pytest.fixture(params=rdbm_support.configurations)
+def app(request, backend, logstore):
+    driver, connargs = request.param
+    args = Args({
+        'log_level': 'DEBUG',
+        'store_type': driver,
+        'store_config': json.dumps(connargs),
+    })
+    striv_app.configure(striv_app.app, args)
+    striv_app.app.backends['nomad'] = backend
+    striv_app.app.logstores['nomad'] = logstore
     return webtest.TestApp(striv_app.app)
 
 
-@pytest.fixture(params=rdbm_support.configurations)
-def basicdb(request):
-    driver, connargs = request.param
-    rdbm_store.setup(
-        driver,
-        connargs,
-        relations={
-            'run': lambda run: [('job', run['job_id'])],
-            'job': lambda job: [('dvalue', '%s:%s' % (n, v)) for (n, v) in job.get('dimensions', {}).items()]
-        },
-        sortkeys={
-            'job': lambda job: job.get('name', None),
-            'run': lambda run: run.get('created_at', None)
-        }
-    )
-    rdbm_store.upsert_entities(('execution', 'nomad', AN_EXECUTION))
-    rdbm_store.upsert_entities(('dimension', 'maturity', A_DIMENSION))
+@pytest.fixture()
+def basicdb(app):
+    app.app.store.upsert_entities(('execution', 'nomad', AN_EXECUTION))
+    app.app.store.upsert_entities(('dimension', 'maturity', A_DIMENSION))
     yield
     # TODO: Teach replace_type about relations
-    rdbm_store.CONN.cursor().execute('DELETE FROM entities')
-    rdbm_store.CONN.cursor().execute('DELETE FROM relations')
+    app.app.store.CONN.cursor().execute('DELETE FROM entities')
+    app.app.store.CONN.cursor().execute('DELETE FROM relations')
 
 
 @pytest.fixture()
-def four_runs():
-    rdbm_store.upsert_entities(('job', 'job-1', A_JOB))
-    rdbm_store.upsert_entities(('job', 'job-2', A_JOB))
-    rdbm_store.upsert_entities(('run', 'run-1', {
+def four_runs(app):
+    app.app.store.upsert_entities(('job', 'job-1', A_JOB))
+    app.app.store.upsert_entities(('job', 'job-2', A_JOB))
+    app.app.store.upsert_entities(('run', 'run-1', {
         'job_id': 'job-1',
         'execution': 'nomad',
         'created_at': '2020-10-31T23:40:00+0000',
     }))
-    rdbm_store.upsert_entities(('run', 'run-2', {
+    app.app.store.upsert_entities(('run', 'run-2', {
         'job_id': 'job-1',
         'execution': 'nomad',
         'created_at': '2020-10-31T23:40:01+0000',
     }))
-    rdbm_store.upsert_entities(('run', 'run-3', {
+    app.app.store.upsert_entities(('run', 'run-3', {
         'job_id': 'job-1',
         'execution': 'nomad',
         'created_at': '2020-10-31T23:40:02+0000',
     }))
-    rdbm_store.upsert_entities(('run', 'run-4', {
+    app.app.store.upsert_entities(('run', 'run-4', {
         'job_id': 'job-2',
         'execution': 'nomad',
         'created_at': '2020-10-31T23:40:03+0000',
@@ -157,7 +157,8 @@ class TestEvaluateJob:
     def test_evaluate_job_explains_why_template_is_invalid(self, app):
         bad_execution = AN_EXECUTION.copy()
         bad_execution.update({'payload_template': '"foo'})
-        rdbm_store.upsert_entities(('execution', 'bad_nomad', bad_execution))
+        app.app.store.upsert_entities(
+            ('execution', 'bad_nomad', bad_execution))
         job = A_JOB.copy()
         job.update({'execution': 'bad_nomad'})
         response = app.post_json('/jobs/evaluate', job, status=422)
@@ -170,7 +171,7 @@ class TestCreateJob:
         response = app.post_json('/jobs', A_JOB)
         eid = response.json['id']
         assert eid
-        created_job, *_ = rdbm_store.load_entities(('job', eid))
+        created_job, *_ = app.app.store.load_entities(('job', eid))
         assert created_job['name'] == 'ze-name'
         assert datetime.strptime(
             created_job['modified_at'],
@@ -193,7 +194,8 @@ class TestCreateJob:
     def test_create_job_rejects_broken_template_with_detailed_error(self, app):
         bad_execution = AN_EXECUTION.copy()
         bad_execution.update({'payload_template': '"foo'})
-        rdbm_store.upsert_entities(('execution', 'bad_nomad', bad_execution))
+        app.app.store.upsert_entities(
+            ('execution', 'bad_nomad', bad_execution))
         job = A_JOB.copy()
         job.update({'execution': 'bad_nomad'})
         response = app.post_json('/jobs', job, status=422)
@@ -203,7 +205,7 @@ class TestCreateJob:
 @pytest.mark.usefixtures('basicdb')
 class TestGetJob:
     def test_get_job_retrieves_single_job(self, app):
-        rdbm_store.upsert_entities(('job', 'job-1', A_JOB))
+        app.app.store.upsert_entities(('job', 'job-1', A_JOB))
         assert app.get('/job/job-1').json == A_JOB
 
     def test_get_job_returns_404_on_nonexistent_job(self, app):
@@ -213,32 +215,32 @@ class TestGetJob:
 @pytest.mark.usefixtures('basicdb')
 class TestPutJob:
     def test_put_job_overwrites_single_job(self, app):
-        rdbm_store.upsert_entities(('job', 'job-1', A_JOB))
+        app.app.store.upsert_entities(('job', 'job-1', A_JOB))
         updated_job = A_JOB.copy()
         updated_job['name'] = 'updated'
         assert app.put_json(
             '/job/job-1', updated_job).json == {'id': 'job-1'}
-        stored_job = rdbm_store.load_entities(('job', 'job-1'))[0]
+        stored_job = app.app.store.load_entities(('job', 'job-1'))[0]
         assert stored_job['name'] == 'updated'
 
     def test_ignores_readonly_modified_at(self, app):
-        rdbm_store.upsert_entities(('job', 'job-1', A_JOB))
+        app.app.store.upsert_entities(('job', 'job-1', A_JOB))
         updated_job = A_JOB.copy()
         updated_job['modified_at'] = '2020-10-31T23:40:00+0000'
         app.put_json('/job/job-1', updated_job)
-        stored_job = rdbm_store.load_entities(('job', 'job-1'))[0]
+        stored_job = app.app.store.load_entities(('job', 'job-1'))[0]
         assert stored_job['modified_at'] != '2020-10-31T23:40:00+0000'
 
     def test_put_job_maintains_modified_at(self, app):
         job = A_JOB.copy()
         job['modified_at'] = '2020-10-31T23:40:00+0000'
-        rdbm_store.upsert_entities(('job', 'job-1', job))
+        app.app.store.upsert_entities(('job', 'job-1', job))
         assert app.put_json('/job/job-1', A_JOB).json == {'id': 'job-1'}
-        stored_job = rdbm_store.load_entities(('job', 'job-1'))[0]
+        stored_job = app.app.store.load_entities(('job', 'job-1'))[0]
         assert stored_job['modified_at'] > '2020-10-31T23:40:00+0000'
 
     def test_put_job_invokes_backend(self, app, backend):
-        rdbm_store.upsert_entities(('job', 'job-1', A_JOB))
+        app.app.store.upsert_entities(('job', 'job-1', A_JOB))
         app.put_json('/job/job-1', A_JOB)
         assert backend.actions == [
             ('sync', {'some': 'config'}, 'job-1', '"ze_template"\n')
@@ -248,7 +250,7 @@ class TestPutJob:
         app.put_json('/job/nonsense', {}, status=404)
 
     def test_put_job_rejects_invalid_input_with_detailed_error(self, app):
-        rdbm_store.upsert_entities(('job', 'job-1', A_JOB))
+        app.app.store.upsert_entities(('job', 'job-1', A_JOB))
         invalid_job = A_JOB.copy()
         invalid_job.update({'gunk': False})
         response = app.put_json('/job/job-1', invalid_job, status=422)
@@ -295,10 +297,10 @@ class TestListJobRuns:
 @pytest.mark.usefixtures('basicdb')
 class TestRefreshRuns:
     def test_creates_runs_for_all_executions(self, app, backend):
-        rdbm_store.upsert_entities(('job', 'job-1', A_JOB))
+        app.app.store.upsert_entities(('job', 'job-1', A_JOB))
         backend.runs['alloc-1'] = A_RUN
         response = app.post('/runs/refresh-all')
-        runs = rdbm_store.find_entities('run')
+        runs = app.app.store.find_entities('run')
         assert_that(runs['alloc-1'], has_entries({
             'job_id': 'job-1',
             'execution': 'nomad'
@@ -396,11 +398,11 @@ class TestLoadState:
         response = app.post_json('/state', state)
         assert response.json == {'dimensions': {'deleted': 1, 'inserted': 1}}
         assert_that(
-            calling(rdbm_store.load_entities)
+            calling(app.app.store.load_entities)
             .with_args(('dimension', 'maturity')),
             raises(KeyError)
         )
-        assert rdbm_store.load_entities(
+        assert app.app.store.load_entities(
             ('dimension', 'another-maturity')
         ) == [A_DIMENSION]
 
@@ -413,10 +415,10 @@ class TestLoadState:
         response = app.post_json('/state', state)
         assert response.json == {'executions': {'deleted': 1, 'inserted': 1}}
         assert_that(
-            calling(rdbm_store.load_entities)
+            calling(app.app.store.load_entities)
             .with_args(('execution', 'nomad')),
             raises(KeyError)
         )
-        assert rdbm_store.load_entities(
+        assert app.app.store.load_entities(
             ('execution', 'another-execution')
         ) == [AN_EXECUTION]

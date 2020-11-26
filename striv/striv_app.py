@@ -17,17 +17,16 @@ from striv import errors, schemas, templating
 
 DEFAULT_LIMIT = 1000
 
-app = Bottle()
-
-backends = {}
-logstores = {}
-store = None
 logger = logging.getLogger('striv')
 handler = logging.StreamHandler(sys.stderr)
 handler.setFormatter(logging.Formatter(
     '%(asctime)s  [%(levelname)s] %(message)s')
 )
 logger.addHandler(handler)
+
+app = Bottle()
+app.backends = {}
+app.logstores = {}
 
 
 def error_handler(func):
@@ -37,7 +36,7 @@ def error_handler(func):
         except HTTPResponse as response:
             return response
         except Exception as err:
-            logger.warning('Exception raised [err=%s]', err)
+            logger.warning('Exception raised [err=%s]', err, exc_info=True)
             return HTTPResponse(
                 body=json.dumps({
                     'title': 'Internal server error',
@@ -106,7 +105,7 @@ app.install(templating_validation)
 
 def _job_to_payload(job):
     selected_dimensions = job.get('dimensions', {})
-    execution, *dimensions = store.load_entities(
+    execution, *dimensions = app.store.load_entities(
         ('execution', job['execution']),
         *[('dimension', name) for name in selected_dimensions.keys()]
     )
@@ -130,11 +129,11 @@ def _job_to_payload(job):
 
 def _apply_job(job_id, job):
     execution, payload = _job_to_payload(job)
-    backend = backends[execution['driver']]
+    backend = app.backends[execution['driver']]
     backend.sync_job(execution['driver_config'], job_id, payload)
     job['modified_at'] = datetime.now(
         timezone.utc).strftime('%Y-%m-%dT%H:%M:%S%z')
-    store.upsert_entities(('job', job_id, job))
+    app.store.upsert_entities(('job', job_id, job))
 
 
 def _encode_page_token(*rnge):
@@ -179,7 +178,7 @@ def list_jobs():
     '''
     Retrieve a list of jobs. Returns a dict mapping id to entity.
     '''
-    return store.find_entities('job')
+    return app.store.find_entities('job')
 
 
 @app.post('/jobs')
@@ -209,7 +208,7 @@ def get_job(job_id):
     Retrieve a single job definition.
     '''
     try:
-        return store.load_entities(('job', job_id))[0]
+        return app.store.load_entities(('job', job_id))[0]
     except KeyError:
         return HTTPResponse(status=404)
 
@@ -221,7 +220,7 @@ def put_job(job_id):
     create new jobs.
     '''
     try:
-        store.load_entities(('job', job_id))[0]
+        app.store.load_entities(('job', job_id))[0]
     except KeyError:
         return HTTPResponse(status=404)
     job = schemas.Job().load(request.json)
@@ -236,10 +235,10 @@ def list_job_runs(job_id):
     '''
     rnge, limit = _range_and_adjusted_limit(request)
     try:
-        store.load_entities(('job', job_id))
+        app.store.load_entities(('job', job_id))
     except KeyError:
         return HTTPResponse(status=404)
-    runs = store.find_entities(
+    runs = app.store.find_entities(
         'run',
         related_to=('job', job_id),
         range=rnge,
@@ -261,19 +260,20 @@ def refresh_runs():
     runs.
     '''
     identities = {}
-    for execution in store.find_entities('execution').values():
-        backend = backends[execution['driver']]
+    for execution in app.store.find_entities('execution').values():
+        backend = app.backends[execution['driver']]
         identity = backend.namespace_identity(
             execution['driver_config']
         )
         identities[identity] = (backend, execution['driver_config'])
-    jobs = store.find_entities('job')
+    jobs = app.store.find_entities('job')
     total_runs = 0
     for (_backend, driver_config) in identities.values():
         runs = _backend.fetch_runs(driver_config, jobs).items()
         for _, run in runs:
             run['execution'] = jobs[run['job_id']]['execution']
-        store.upsert_entities(*(('run', run_id, run) for run_id, run in runs))
+        app.store.upsert_entities(*(('run', run_id, run)
+                                    for run_id, run in runs))
         total_runs += len(runs)
     return {'processed': total_runs}
 
@@ -287,7 +287,7 @@ def list_runs():
     next page.
     '''
     rnge, limit = _range_and_adjusted_limit(request)
-    runs = store.find_entities('run', range=rnge, limit=limit)
+    runs = app.store.find_entities('run', range=rnge, limit=limit)
     if len(runs) == limit:
         (_, last_run) = runs.popitem()
         response.headers['Link'] = '</runs?page_token=%s>; rel="next"' % (
@@ -302,7 +302,7 @@ def get_run(run_id):
     Returns a single run.
     '''
     try:
-        return store.load_entities(('run', run_id))[0]
+        return app.store.load_entities(('run', run_id))[0]
     except KeyError:
         return HTTPResponse(status=404)
 
@@ -313,11 +313,11 @@ def get_run_log(run_id):
     Returns a dict with log streams.
     '''
     try:
-        run = store.load_entities(('run', run_id))[0]
+        run = app.store.load_entities(('run', run_id))[0]
     except KeyError:
         return HTTPResponse(status=404)
-    execution = store.load_entities(('execution', run['execution']))[0]
-    logstore = logstores[execution['logstore']]
+    execution = app.store.load_entities(('execution', run['execution']))[0]
+    logstore = app.logstores[execution['logstore']]
     try:
         return logstore.fetch_logs(execution['driver_config'], run_id)
     except errors.RunNotFound as err:
@@ -340,8 +340,8 @@ def dump_state():
     dumping.
     '''
     return {
-        'dimensions': store.find_entities('dimension'),
-        'executions': store.find_entities('execution')
+        'dimensions': app.store.find_entities('dimension'),
+        'executions': app.store.find_entities('execution')
     }
 
 
@@ -358,13 +358,13 @@ def load_state():
     state = schemas.State().load(request.json)
     changes = {}
     if 'dimensions' in state.keys():
-        deleted, inserted = store.replace_type(
+        deleted, inserted = app.store.replace_type(
             'dimension',
             state['dimensions']
         )
         changes['dimensions'] = {'deleted': deleted, 'inserted': inserted}
     if 'executions' in state.keys():
-        deleted, inserted = store.replace_type(
+        deleted, inserted = app.store.replace_type(
             'execution',
             state['executions']
         )
@@ -401,14 +401,13 @@ parser.add_argument(
 )
 
 
-def configure(args):
+def configure(app, args):
     logger.setLevel(args.log_level)
     from striv import nomad_backend, nomad_logstore, rdbm_store  # pylint: disable = import-outside-toplevel
-    global backends, logstores, store
-    store = rdbm_store
-    backends['nomad'] = nomad_backend
-    logstores['nomad'] = nomad_logstore
-    store.setup(
+    app.store = rdbm_store
+    app.backends['nomad'] = nomad_backend
+    app.logstores['nomad'] = nomad_logstore
+    app.store.setup(
         args.store_type,
         json.loads(args.store_config),
         relations={
@@ -430,7 +429,7 @@ def dev_entrypoint():
                         help="'0.0.0.0' for ALL interfaces")
     parser.add_argument('--bottle-port', default=8080)
     args = parser.parse_args()
-    configure(args)
+    configure(app, args)
     app.run(host=args.bottle_host, reloader=True,
             port=args.bottle_port, debug=True)
 
@@ -439,7 +438,7 @@ def prod_entrypoint(environ, start_response):
     global CONFIGURED
     if not CONFIGURED:
         args = parser.parse_args()
-        configure(args)
+        configure(app, args)
         CONFIGURED = True
     return app(environ, start_response)
 
