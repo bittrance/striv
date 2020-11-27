@@ -1,29 +1,82 @@
 # pylint: disable = missing-function-docstring
 
 import json
+from striv.templating import ValidationError
 
+import pytest
 from hamcrest import *  # pylint: disable = unused-wildcard-import
 from striv import templating
+
+
+@pytest.fixture()
+def value_parsers():
+    return {
+        'string': lambda v: v,
+        'object': lambda v: v['value'],
+    }
 
 
 def _compact_json(payload):
     return json.dumps(json.loads(payload))
 
 
-def test_materialize_layer_makes_named_snippet():
-    layer = templating.materialize_layer('ze-layer', {'prip': 'prop'})
-    assert layer == ('ze-layer', '{prip: "prop"}')
+class TestMaterializeLayer:
+    def test_makes_named_snippet(self, value_parsers):
+        layer = templating.materialize_layer(
+            'ze-layer', {'prip': 'prop'}, value_parsers)
+        assert layer == ('ze-layer', '{prip: "prop"}')
 
+    def test_nests_on_dot(self, value_parsers):
+        layer = templating.materialize_layer('ze-layer', {
+            'prap.prep.prup': 'prop',
+            'prap.pryp': 'prip',
+        }, value_parsers)
+        assert layer == (
+            'ze-layer',
+            '{prap: {prep: {prup: "prop"}, pryp: "prip"}}'
+        )
 
-def test_materialize_layer_nests_on_dot():
-    layer = templating.materialize_layer('ze-layer', {
-        'prap.prep.prup': 'prop',
-        'prap.pryp': 'prip',
-    })
-    assert layer == (
-        'ze-layer',
-        '{prap: {prep: {prup: "prop"}, pryp: "prip"}}'
-    )
+    def test_applies_value_parsers(self, value_parsers):
+        layer = templating.materialize_layer(
+            'ze-layer',
+            {'prip': {'type': 'object', 'value': 'object-value'}},
+            value_parsers
+        )
+        assert layer == ('ze-layer', '{prip: "object-value"}')
+
+    def test_applies_value_parsers_nestedly(self, value_parsers):
+        layer = templating.materialize_layer(
+            'ze-layer',
+            {'prip.prup': {'type': 'object', 'value': 'object-value'}},
+            value_parsers
+        )
+        assert layer == ('ze-layer', '{prip: {prup: "object-value"}}')
+
+    def test_complains_about_missing_type(self, value_parsers):
+        value = {'prip': {'value': 'object-value'}}
+        assert_that(
+            calling(templating.materialize_layer)
+            .with_args('ze-layer', value, value_parsers),
+            raises(ValidationError, pattern='missing object')
+        )
+
+    def test_complains_about_missing_type(self, value_parsers):
+        value = {'prip': {'type': 'unknown', 'value': 'object-value'}}
+        assert_that(
+            calling(templating.materialize_layer)
+            .with_args('ze-layer', value, value_parsers),
+            raises(ValidationError, pattern='no parser')
+        )
+
+    def test_wraps_parser_exception(self, value_parsers):
+        def boom(_):
+            raise KeyError('boom')
+        value_parsers['string'] = boom
+        assert_that(
+            calling(templating.materialize_layer)
+            .with_args('ze-layer', {'prip': 'prop'}, value_parsers),
+            raises(ValidationError)
+        )
 
 
 def test_merge_layers_uses_jsonnet_inheritance():

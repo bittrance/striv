@@ -2,7 +2,7 @@ module.exports = {
     configureWebpack: {
         devServer: {
             proxy: {
-                '/state|/job|/run': {
+                '/job|/public-key|/run|/state': {
                     target: 'http://localhost:8081/',
                 }
             }

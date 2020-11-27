@@ -6,11 +6,12 @@ from datetime import datetime
 import bottle
 import pytest
 import webtest
-
 from hamcrest import *  # pylint: disable = unused-wildcard-import
-from striv import errors, striv_app
 
 from . import rdbm_support
+from striv import crypto, errors, striv_app
+from striv import errors, striv_app
+
 
 bottle.debug(True)
 
@@ -93,6 +94,7 @@ def app(request, backend, logstore):
         'log_level': 'DEBUG',
         'store_type': driver,
         'store_config': json.dumps(connargs),
+        'encryption_key': crypto.generate_key(),
     })
     striv_app.configure(striv_app.app, args)
     striv_app.app.backends['nomad'] = backend
@@ -149,6 +151,17 @@ class TestEvaluateJob:
         response = app.post_json('/jobs/evaluate', A_JOB)
         assert response.json == {'payload': '"ze_template"\n'}
 
+    def test_redacts_secrets(self, app):
+        execution = AN_EXECUTION.copy()
+        execution['payload_template'] = 'params.param'
+        app.app.store.upsert_entities(('execution', 'nomad', execution))
+        job = A_JOB.copy()
+        job['params'] = {
+            'param': {'type': 'secret', 'encrypted': 'verrah-secret'}
+        }
+        response = app.post_json('/jobs/evaluate', job)
+        assert response.json == {'payload': '"<redacted>"\n'}
+
     def test_ignores_readonly_modified_at(self, app):
         job = A_JOB.copy()
         job['modified_at'] = '2020-10-31T23:40:40+0000'
@@ -184,6 +197,36 @@ class TestCreateJob:
         assert backend.actions == [
             ('sync', {'some': 'config'}, eid, '"ze_template"\n')
         ]
+
+    def test_passes_decrypted_secret_to_backend(self, app, backend):
+        execution = AN_EXECUTION.copy()
+        execution['payload_template'] = 'params.param'
+        app.app.store.upsert_entities(('execution', 'nomad', execution))
+        job = A_JOB.copy()
+        job['params'] = {
+            'param': {
+                'type': 'secret',
+                'encrypted': crypto.encrypt_value(app.app.public_key_pem, 'verrah-secret')
+            }
+        }
+        app.post_json('/jobs', job)
+        assert backend.actions[0][3] == '"verrah-secret"\n'
+
+    def test_explodes_on_invalid_encryption(self, app, backend):
+        unknown_key = crypto.recover_pubkey(
+            crypto.deserialize_private_key(crypto.generate_key()))
+        job = A_JOB.copy()
+        job['params'] = {
+            'param': {
+                'type': 'secret',
+                'encrypted': crypto.encrypt_value(unknown_key, 'verrah-secret')
+            }
+        }
+        response = app.post_json('/jobs', job, status=422)
+        assert_that(
+            response.json,
+            has_entry('source', has_entry('type', 'secret'))
+        )
 
     def test_create_job_rejects_invalid_input_with_detailed_error(self, app):
         invalid_job = A_JOB.copy()
@@ -292,6 +335,16 @@ class TestListJobRuns:
 
     def test_refuses_range_and_page_token(self, app):
         app.get('/runs', {'lower': 'asdf', 'page_token': 'asdf'}, status=400)
+
+
+class TestPublicKey:
+    def test_returns_public_key(self, app):
+        response = app.get('/public-key')
+        assert 'BEGIN PUBLIC KEY' in response.json['public-key']
+
+    def test_without_key_returns_501(self, app):
+        app.app.public_key_pem = None
+        app.get('/public-key', status=501)
 
 
 @pytest.mark.usefixtures('basicdb')

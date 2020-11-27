@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 
 import marshmallow
 from bottle import Bottle, HTTPResponse, request, response, static_file
-from striv import errors, schemas, templating
+from striv import crypto, errors, schemas, templating
 
 DEFAULT_LIMIT = 1000
 
@@ -103,7 +103,7 @@ app.install(marshmallow_validation)
 app.install(templating_validation)
 
 
-def _job_to_payload(job):
+def _job_to_payload(job, value_parsers):
     selected_dimensions = job.get('dimensions', {})
     execution, *dimensions = app.store.load_entities(
         ('execution', job['execution']),
@@ -116,10 +116,15 @@ def _job_to_payload(job):
         )
     selected_params.sort()
     params_snippet = templating.merge_layers(
-        templating.materialize_layer('default', execution['default_params']),
-        *[templating.materialize_layer(name, params)
+        templating.materialize_layer(
+            'default', execution['default_params'], value_parsers),
+        *[templating.materialize_layer(name, params, value_parsers)
           for (_, name, params) in selected_params],
-        templating.materialize_layer(job['name'], job.get('params', {}))
+        templating.materialize_layer(
+            job['name'],
+            job.get('params', {}),
+            value_parsers
+        )
     )
     return execution, templating.evaluate(
         execution['payload_template'],
@@ -128,7 +133,7 @@ def _job_to_payload(job):
 
 
 def _apply_job(job_id, job):
-    execution, payload = _job_to_payload(job)
+    execution, payload = _job_to_payload(job, app.apply_value_parsers)
     backend = app.backends[execution['driver']]
     backend.sync_job(execution['driver_config'], job_id, payload)
     job['modified_at'] = datetime.now(
@@ -199,7 +204,7 @@ def evaluate_job():
     the payload for debugging.
     '''
     job = schemas.Job().load(request.json)
-    return {'payload': _job_to_payload(job)[1]}
+    return {'payload': _job_to_payload(job, app.evaluate_value_parsers)[1]}
 
 
 @app.get('/job/:job_id')
@@ -250,6 +255,22 @@ def list_job_runs(job_id):
             _encode_page_token('desc', None, last_run['created_at'])
         )
     return runs
+
+
+@app.get('/public-key')
+def get_public_key():
+    '''
+    Retrieve this key to encrypt parameter values with type=secret.
+    '''
+    if not app.__dict__.get('public_key_pem'):
+        return HTTPResponse(
+            status=501,
+            body=json.dumps({
+                'title': 'secrets support not activated',
+                'detail': 'Please ask operator to provide striv with an encryption key.'
+            })
+        )
+    return {'public-key': app.public_key_pem}
 
 
 @app.post('/runs/refresh-all')
@@ -375,6 +396,14 @@ def load_state():
 parser = ArgumentParser(
     description='Start striv with auto reload and debug')
 parser.add_argument(
+    '--encryption-key',
+    default=os.environ.get(
+        'STRIV_ENCRYPTION_KEY',
+        None
+    ),
+    help='Encryption key used for managing secret parameter values'
+)
+parser.add_argument(
     '--store-type',
     default=os.environ.get(
         'STRIV_STORE_TYPE',
@@ -401,8 +430,25 @@ parser.add_argument(
 )
 
 
+def configure_encryption(app, private_key_pem):
+    if not private_key_pem:
+        logger.warn('Secrets support not activated')
+        return
+    app.private_key = crypto.deserialize_private_key(private_key_pem)
+    app.public_key_pem = crypto.recover_pubkey(app.private_key)
+    app.apply_value_parsers['secret'] = \
+        lambda v: crypto.decrypt_value(app.private_key, v['encrypted'])
+    app.evaluate_value_parsers['secret'] = \
+        lambda v: '<redacted>'
+
+
 def configure(app, args):
     logger.setLevel(args.log_level)
+    app.apply_value_parsers = {
+        'string': lambda v: v
+    }
+    app.evaluate_value_parsers = app.apply_value_parsers.copy()
+    configure_encryption(app, args.encryption_key)
     from striv import nomad_backend, nomad_logstore, rdbm_store  # pylint: disable = import-outside-toplevel
     app.store = rdbm_store
     app.backends['nomad'] = nomad_backend

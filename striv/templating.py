@@ -27,11 +27,34 @@ def _write_jsonnet(buf, tree):
     buf.write('}')
 
 
-def materialize_layer(name, params):
-    'Convert a params dict to a jsonnet snippet.'
+def _find_parser(value, value_parsers):
+    if isinstance(value, dict):
+        try:
+            typ = value['type']
+        except KeyError:
+            raise ValidationError(
+                value, 'value object %s missing type' % value)
+    else:
+        typ = 'string'
+    parser = value_parsers.get(typ)
+    if not parser:
+        raise ValidationError(value, 'no parser found for type %s' % typ)
+    return parser
+
+
+def materialize_layer(name, params, value_parsers):
+    '''
+    Convert a params dict to a jsonnet snippet, evaluating any value
+    objects as per the provided parsers.
+    '''
     tree = {}
     for (key, value) in params.items():
-        _collate(tree, key.split('.'), value)
+        parser = _find_parser(value, value_parsers)
+        try:
+            parsed = parser(value)
+        except Exception as exc:
+            raise ValidationError(value, 'value parser failed') from exc
+        _collate(tree, key.split('.'), parsed)
     buf = io.StringIO()
     _write_jsonnet(buf, tree)
     return (name, buf.getvalue())
