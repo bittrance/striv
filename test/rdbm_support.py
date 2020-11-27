@@ -1,3 +1,5 @@
+import os
+
 configurations = [
     [
         'mysql',
@@ -24,3 +26,8 @@ configurations = [
         }
     ],
 ]
+
+filtered_stores = os.environ.get('STORES')
+if filtered_stores:
+    configurations = [c for c in configurations if c[0]
+                      in filtered_stores.split(',')]
