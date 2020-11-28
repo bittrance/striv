@@ -10,6 +10,7 @@ describe('actions', () => {
         execution: 'ze-execution',
         modified_at: '2020-10-31T23:40:00+0000'
     }
+    let public_key = "-----BEGIN PUBLIC KEY-----\nze\nkey\n-----END PUBLIC KEY-----\n"
     let run1 = {
         job_id: 'job-1',
         status: 'pending',
@@ -220,6 +221,24 @@ describe('actions', () => {
                 fetchMock.put('path:/job/job-1', '')
                 await store.actions.store_current_job({ state })
                 expect(fetchMock).toHaveFetched()
+            })
+        })
+    })
+
+    describe('load_public_key', () => {
+        beforeEach(() => fetchMock.get('path:/public-key', { 'public-key': public_key }))
+
+        it('loads the public key used to encrypt secrets', async () => {
+            await store.actions.load_public_key({ commit, state })
+            expect(commit).toHaveBeenCalledWith('load_public_key', 'zekey')
+        })
+
+        describe('when the backend has no public key', () => {
+            beforeEach(() => fetchMock.get('path:/public-key', { status: 501 }))
+
+            it('stores null', async () => {
+                await store.actions.load_public_key({ commit, state })
+                expect(commit).toHaveBeenCalledWith('load_public_key', null)
             })
         })
     })

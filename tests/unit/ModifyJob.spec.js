@@ -17,6 +17,12 @@ describe('ModifyJob', () => {
         expect($store.dispatch).toHaveBeenCalledWith('load_state')
     })
 
+    it('requests the public key on mounting', async () => {
+        let wrapper = mount(ModifyJob, options)
+        await wrapper.vm.$nextTick()
+        expect($store.dispatch).toHaveBeenCalledWith('load_public_key')
+    })
+
     it('requests the store to unset the job id (i.e. enter create mode)', () => {
         mount(ModifyJob, options)
         expect($store.commit).toHaveBeenCalledWith('current_job_id', undefined)

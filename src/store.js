@@ -59,6 +59,7 @@ export default {
             current_job: {},
             current_job_id: null,
             current_job_evaluation: null,
+            public_key: null,
             runs: {},
             current_run: {},
             current_run_logs: {},
@@ -81,6 +82,9 @@ export default {
         },
         current_job_evaluation(state, evaluation) {
             state.current_job_evaluation = evaluation
+        },
+        load_public_key(state, public_key) {
+            state.public_key = public_key
         },
         load_runs(state, runs) {
             state.runs = runs
@@ -154,6 +158,25 @@ export default {
                         iso_string_to_date(job, JOB_DATE_FIELDS)
                     }
                     commit('load_jobs', jobs)
+                } else {
+                    const message = await response.text()
+                    state.toast.error(message, TOAST_OPTIONS)
+                }
+            } catch (error) {
+                state.toast.error(error, TOAST_OPTIONS)
+            }
+        },
+        async load_public_key({ commit, state }) {
+            try {
+                let response = await fetch('/public-key')
+                if (response.ok) {
+                    const keys = await response.json()
+                    const public_key = keys['public-key']
+                        .replaceAll(/-----.*?-----/g, '')
+                        .replaceAll('\n', '')
+                    commit('load_public_key', public_key)
+                } else if (response.status == 501) {
+                    commit('load_public_key', null)
                 } else {
                     const message = await response.text()
                     state.toast.error(message, TOAST_OPTIONS)

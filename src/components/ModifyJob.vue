@@ -28,6 +28,7 @@
     <h2>Job-specific parameters</h2>
     <params-editor
       v-bind:params="params"
+      v-bind:public_key="public_key"
       @add-param="add_param"
       @delete-param="delete_param"
     />
@@ -83,6 +84,9 @@ export default {
     executions() {
       return Object.entries(this.$store.state.executions);
     },
+    public_key() {
+      return this.$store.state.public_key;
+    },
     name: store_param("name"),
     execution: store_param("execution"),
     dimensions: store_param("dimensions", {}),
@@ -98,6 +102,7 @@ export default {
   },
   mounted() {
     this.$store.dispatch("load_state");
+    this.$store.dispatch("load_public_key");
     this.current_job();
   },
   watch: {

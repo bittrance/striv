@@ -2,16 +2,29 @@ import { mount } from '@vue/test-utils'
 import ParamsEditor from '@/components/ParamsEditor.vue'
 
 describe('ParamsEditor', () => {
-    let params = { param1: 'value1', param2: 'value2' }
+    const params = {
+        param1: 'value1',
+        param2: { type: 'secret', encrypted: 'encrypted' }
+    }
+    const public_key = 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAts0tCjEj+FLJrwzFaFgoeQEAZ8/tWaH2pWM5sisaxmVH/2c32fgMVBQbs5hrr/EpwHLCR+S8W3s908Ne91L+n9QCEJCesDGJRljHrINYxqa8ilhzgQIH33cMvqtvrOWh43bPQUbHVSzNY6/TTsYX9Qn6h5EwV3j02MkgFGF/4yRHuqsMNMTO8o554xzqaoVgV2EAk+GREMtt07RlUXOg e2Ty3VXiJOfHWE7kUYgFhSBtm7AQK3KOHKVsACHBi6z+nIF2uDBeBr26AP5kMab7uQp6M2h/e2VVWwr743UsZoyXEsEchYzBR6RdE32pDVmR84oOlzILj0XcYDCjH/Xq/wIDAQAB'
 
     let wrapper
     beforeEach(() => wrapper = mount(ParamsEditor, { props: { params } }))
 
-    test('presents existing parameters', () => {
+    it('presents the existing parameter', () => {
         expect(wrapper.text()).toContain('param1')
-        expect(wrapper.text()).toContain('param2')
         expect(wrapper.text()).toContain('value1')
-        expect(wrapper.text()).toContain('value2')
+    })
+
+    it('redacts the secret', () => {
+        expect(wrapper.text()).toContain('param2')
+        expect(wrapper.text()).toContain('<redacted>')
+        expect(wrapper.text()).not.toContain('encrypted')
+    })
+
+    it('does not allow creating secrets', () => {
+        let type = wrapper.find('[id="param-type-secret"]')
+        expect(type.element.disabled).toBe(true)
     })
 
     describe('when set readonly', () => {
@@ -59,6 +72,52 @@ describe('ParamsEditor', () => {
         test('puts the parameter back for easy adding', () => {
             expect(wrapper.find('[name="param-name"]').element.value).toBe('param1')
             expect(wrapper.find('[name="param-value"]').element.value).toBe('value1')
+        })
+    })
+
+    describe('when a public key is available', () => {
+        beforeEach(() => wrapper = mount(ParamsEditor, { props: { params, public_key } }))
+
+        it('allows creating secrets', () => {
+            let type = wrapper.find('[id="param-type-secret"]')
+            expect(type.element.disabled).toBe(false)
+        })
+
+        describe('and the add button is pressed with a secret', () => {
+            /* TypeError: Cannot read property 'activeElement' of null from webcrypto.encrypt */
+            it.skip('emits an add-param event with a value object', async () => {
+                wrapper.find('[name="param-name"]').setValue('param3')
+                wrapper.find('[name="param-type"]').setValue('secret')
+                wrapper.find('[name="param-value"]').setValue('verrah-secret')
+                wrapper.find('[name="add-param"]').trigger('click')
+                await wrapper.vm.$nextTick()
+                expect(wrapper.emitted()).toStrictEqual({
+                    'add-param': [
+                        ['param3', {
+                            type: 'secret',
+                            encrypted: expect.stringMatching('.{255}')
+                        }]
+                    ]
+                })
+            })
+        })
+
+        describe('and a secret is deleted', () => {
+            beforeEach(async () => {
+                const delete_buttons = wrapper.findAll('[name="delete-param"]')
+                delete_buttons[delete_buttons.length - 1].trigger('click')
+                await wrapper.vm.$nextTick()
+            })
+
+            it('emits delete-param event', () => {
+                expect(wrapper.emitted()).toStrictEqual({ 'delete-param': [['param2']] })
+            })
+
+            it('does not put the parameter back for easy input', () => {
+                expect(wrapper.find('[name="param-name"]').element.value).toBe('')
+                expect(wrapper.find('[name="param-type"]').element.value).toBe('text')
+                expect(wrapper.find('[name="param-value"]').element.value).toBe('')
+            })
         })
     })
 })
