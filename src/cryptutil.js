@@ -11,8 +11,8 @@ const ALGORITHM = { name: 'RSA-OAEP', hash: { name: 'SHA-256' } }
 export async function encrypt_value(public_key, cleartext) {
     const raw_symmetric_key = _crypto.getRandomValues(new Uint8Array(32))
     const symmetric_key = btoa(String.fromCharCode(...raw_symmetric_key))
-        .replaceAll('+', '-')
-        .replaceAll('/', '_')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
     const decoded_public_key = Uint8Array.from(atob(public_key), c => c.charCodeAt(0))
     const pubkey = await _crypto.subtle.importKey(
         'spki',

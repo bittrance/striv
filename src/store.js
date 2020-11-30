@@ -172,8 +172,8 @@ export default {
                 if (response.ok) {
                     const keys = await response.json()
                     const public_key = keys['public-key']
-                        .replaceAll(/-----.*?-----/g, '')
-                        .replaceAll('\n', '')
+                        .replace(/-----.*?-----/g, '')
+                        .replace(/\n/g, '')
                     commit('load_public_key', public_key)
                 } else if (response.status == 501) {
                     commit('load_public_key', null)
