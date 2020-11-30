@@ -1,4 +1,4 @@
-import { createToastInterface } from "vue-toastification";
+import { useToast } from "vue-toastification";
 
 const JOB_DATE_FIELDS = ['modified_at']
 const RUN_DATE_FIELDS = ['created_at', 'started_at', 'finished_at']
@@ -63,7 +63,7 @@ export default {
             runs: {},
             current_run: {},
             current_run_logs: {},
-            toast: createToastInterface(),
+            toast: useToast(),
         }
     },
     mutations: {
