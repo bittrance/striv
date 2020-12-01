@@ -21,10 +21,16 @@ def _compact_json(payload):
 
 
 class TestMaterializeLayer:
-    def test_makes_named_snippet(self, value_parsers):
-        layer = templating.materialize_layer(
-            'ze-layer', {'prip': 'prop'}, value_parsers)
-        assert layer == ('ze-layer', '{prip: "prop"}')
+    @pytest.mark.parametrize('input,snippet', [
+        ({'prip': 'prop'}, '{prip: "prop"}'),
+        ({'prip': True}, '{prip: true}'),
+        ({'prip': 4}, '{prip: 4}'),
+        ({'prip': 'pr"op'}, '{prip: "pr\\"op"}'),
+        ({'prip': 'prop\\'}, '{prip: "prop\\\\"}'),
+    ])
+    def test_makes_named_snippet(self, input, snippet, value_parsers):
+        layer = templating.materialize_layer('ze-layer', input, value_parsers)
+        assert layer == ('ze-layer', snippet)
 
     def test_nests_on_dot(self, value_parsers):
         layer = templating.materialize_layer('ze-layer', {

@@ -1,4 +1,5 @@
 import io
+import json
 import _jsonnet
 
 
@@ -23,7 +24,7 @@ def _write_jsonnet(buf, tree):
         if isinstance(value, dict):
             _write_jsonnet(buf, value)
         else:
-            buf.write('"%s"' % value)
+            json.dump(value, buf)
     buf.write('}')
 
 

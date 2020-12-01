@@ -3,7 +3,7 @@ from marshmallow import Schema, fields, validate
 dimension_name_validation = validate.Regexp('^[a-z_][a-z0-9_]*$')
 
 ParamsDefinition = fields.Dict(
-    keys=fields.String(validate=dimension_name_validation)
+    keys=fields.String(validate=validate.Regexp('^[A-Za-z_][A-Za-z0-9_.]*$'))
 )
 
 
