@@ -3,7 +3,12 @@
     <div class="row px-3 py-3">
       <div class="col-sm">
         <small>Job name</small>
-        <div>{{ job.name }}</div>
+        <div>
+          {{ job.name }}
+          <router-link :to="`/job/${job_id}/modify`" class="btn text-primary"
+            ><i class="fas fa-edit"></i
+          ></router-link>
+        </div>
       </div>
       <div class="col-sm">
         <small>Modified at</small>
@@ -46,6 +51,9 @@ export default {
     ParamsEditor,
   },
   computed: {
+    job_id() {
+      return this.$store.state.current_job_id;
+    },
     job() {
       return this.$store.state.current_job;
     },
