@@ -67,6 +67,9 @@ export default {
     compactDateTime,
     statusClass,
     current_job() {
+      if (!this.$route.params.job_id) {
+        return;
+      }
       this.$store.dispatch("load_job", this.$route.params.job_id);
       this.$store.dispatch("load_job_runs", {
         job_id: this.$route.params.job_id,

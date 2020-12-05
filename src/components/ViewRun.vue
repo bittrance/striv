@@ -92,6 +92,9 @@ export default {
     compactDateTime,
     statusClass,
     current_run() {
+      if (!this.$route.params.run_id) {
+        return;
+      }
       this.$store.dispatch("load_run", this.$route.params.run_id);
     },
     is_compact(logname) {
