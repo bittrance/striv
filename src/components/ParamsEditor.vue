@@ -1,74 +1,83 @@
 <template>
-  <table class="table table-sm table-responsive">
-    <tbody>
-      <tr v-for="[name, value] in Object.entries(params)" :key="name">
-        <template v-if="value.type == 'secret'">
-          <td class="col-sm-3 align-middle">{{ name }}</td>
-          <td class="col-sm-3">secret</td>
-          <td class="col-sm px-3 align-middle text-secondary">
-            &lt;redacted&gt;
-          </td>
-        </template>
-        <template v-else>
-          <td class="col-sm-3 align-middle">{{ name }}</td>
-          <td class="col-sm-3">text</td>
-          <td class="col-sm px-3 align-middle">{{ value }}</td>
-        </template>
-        <td class="col-sm-1">
+  <div class="container-fluid form-group">
+    <template v-for="[name, value] in Object.entries(params)" :key="name">
+      <div class="row mb-3">
+        <div class="col-sm-3 px-0 align-middle">
+          <strong>{{ name }}</strong>
+          <span v-if="value.type == 'secret'" class="text-muted">
+            &mdash; secret</span
+          >
+          <span v-else class="text-muted"> &mdash; text</span>
+        </div>
+        <div v-if="value.type == 'secret'" class="col-sm px-0 text-secondary">
+          &lt;redacted&gt;
+        </div>
+        <pre v-else class="col-sm px-0 align-middle">{{ value }}</pre>
+        <div class="col-sm-1 px-0 text-sm-right">
           <button
             v-if="!readonly"
             type="button"
             name="delete-param"
-            class="btn fas fa-trash-alt"
+            class="btn btn-lg border fas fa-trash-alt"
             @click="delete_param(name, value['type'] || 'text')"
           />
-        </td>
-      </tr>
-      <tr v-if="readonly && Object.entries(params).length == 0">
-        <td colspan="3">No parameters provided</td>
-      </tr>
-      <tr v-if="!readonly">
-        <td class="col-sm-3">
-          <input
-            type="text"
-            name="param-name"
-            class="form-control"
-            placeholder="Parameter"
-            v-model="name"
-          />
-        </td>
-        <td class="col-sm-3">
-          <select name="param-type" class="custom-select" v-model="type">
-            <option
-              v-for="type in types"
-              :key="type"
-              :disabled="type == 'secret' && !public_key"
-              :id="'param-type-' + type"
-            >
-              {{ type }}
-            </option>
-          </select>
-        </td>
-        <td class="col-sm">
-          <input
-            type="text"
-            name="param-value"
-            class="form-control"
-            placeholder="Value"
-            v-model="value"
-          />
-        </td>
-        <td class="col-sm-1">
+        </div>
+      </div>
+    </template>
+    <div v-if="readonly && Object.entries(params).length == 0" class="row">
+      <div class="col">No parameters provided</div>
+    </div>
+    <template v-if="!readonly">
+      <h3 class="row">New parameter</h3>
+      <div class="row">
+        <div class="col-sm px-0">
+          <div class="container-fluid">
+            <div class="row">
+              <div class="col-sm px-0 mr-sm-3">
+                <input
+                  type="text"
+                  name="param-name"
+                  class="form-control"
+                  placeholder="Parameter"
+                  v-model="name"
+                />
+              </div>
+              <div class="col-sm-3 px-0">
+                <select name="param-type" class="custom-select" v-model="type">
+                  <option
+                    v-for="type in types"
+                    :key="type"
+                    :disabled="type == 'secret' && !public_key"
+                    :id="'param-type-' + type"
+                  >
+                    {{ type }}
+                  </option>
+                </select>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-sm px-0 pt-sm-2">
+                <textarea
+                  name="param-value"
+                  class="form-control"
+                  placeholder="Value"
+                  v-model="value"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-1 px-0 text-sm-right">
           <button
             type="button"
             name="add-param"
-            class="btn btn-secondary fas fa-plus-square btn-lg"
+            class="btn btn-secondary fas fa-plus btn-lg"
             @click="add_param()"
           />
-        </td>
-      </tr>
-    </tbody>
-  </table>
+        </div>
+      </div>
+    </template>
+  </div>
 </template>
 
 <script>

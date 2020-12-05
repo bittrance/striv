@@ -32,21 +32,23 @@
       @add-param="add_param"
       @delete-param="delete_param"
     />
-    <input
-      type="submit"
-      class="btn btn-primary"
-      value="Create"
-      v-if="is_create"
-    />
-    <input
-      type="submit"
-      class="btn btn-primary"
-      value="Modify"
-      v-if="!is_create"
-    />
-    <router-link to="/jobs/preview" class="btn btn-secondary mx-3">
-      Preview</router-link
-    >
+    <div class="row px-3 mt-3">
+      <input
+        type="submit"
+        class="btn btn-primary"
+        value="Create"
+        v-if="is_create"
+      />
+      <input
+        type="submit"
+        class="btn btn-primary"
+        value="Modify"
+        v-if="!is_create"
+      />
+      <router-link to="/jobs/preview" class="btn btn-secondary mx-3">
+        Preview</router-link
+      >
+    </div>
   </form>
 </template>
 

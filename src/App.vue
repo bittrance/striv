@@ -1,5 +1,10 @@
 <template>
   <div>
+    <img
+      src="logo.png"
+      alt="All geared up nowhere to go"
+      class="mx-1 mt-1 logo"
+    />
     <h1>striv</h1>
     <ul class="nav nav-tabs">
       <li class="nav-item ml-3">
@@ -27,4 +32,9 @@ export default {
   name: "App",
 };
 </script>
-
+<style scoped>
+.logo {
+  float: right;
+  width: 80px;
+}
+</style>

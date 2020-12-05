@@ -1,24 +1,31 @@
 <template>
-  <table class="table table-sm table-responsive">
-    <tbody>
-      <tr v-for="[name, value] in Object.entries(selected)" :key="name">
-        <td class="col-sm-3 align-middle">{{ name }}</td>
-        <td class="col-sm px-3 align-middle">{{ value }}</td>
-        <td class="col-sm-1">
-          <button
-            v-if="!readonly"
-            type="button"
-            name="delete-dimension"
-            class="btn fas fa-trash-alt"
-            @click="delete_dimension(name)"
-          />
-        </td>
-      </tr>
-      <tr v-if="readonly && Object.entries(selected).length == 0">
-        <td class="text-muted" colspan="3">No dimensions selected</td>
-      </tr>
-      <tr v-if="!readonly">
-        <td class="col-sm-3">
+  <div class="container-fluid form-group">
+    <div
+      v-for="[name, value] in Object.entries(selected)"
+      :key="name"
+      class="row mb-3"
+    >
+      <div class="col-sm-3 px-0 mr-sm-3">
+        <strong>{{ name }}</strong>
+      </div>
+      <div class="col-sm px-0 mr-sm-3">{{ value }}</div>
+      <div class="col-sm-1 px-0 text-sm-right">
+        <button
+          v-if="!readonly"
+          type="button"
+          name="delete-dimension"
+          class="btn btn-lg border fas fa-trash-alt"
+          @click="delete_dimension(name)"
+        />
+      </div>
+    </div>
+    <div v-if="readonly && Object.entries(selected).length == 0" class="row">
+      <div class="col text-muted" colspan="3">No dimensions selected</div>
+    </div>
+    <template v-if="!readonly">
+      <h3 class="row">Add dimension</h3>
+      <div class="row">
+        <div class="col-sm-3 px-0 mr-sm-3">
           <select name="new-name" class="custom-select" v-model="new_name">
             <option :value="null" hidden disabled>Select dimension</option>
             <option
@@ -30,8 +37,8 @@
               {{ id }}
             </option>
           </select>
-        </td>
-        <td class="col-sm">
+        </div>
+        <div class="col-sm px-0">
           <select name="new-value" class="custom-select" v-model="new_value">
             <option :value="null" hidden disabled>Select value</option>
             <option
@@ -42,18 +49,18 @@
               {{ value }}
             </option>
           </select>
-        </td>
-        <td class="col-sm-1">
+        </div>
+        <div class="col-sm-1 px-0 text-sm-right">
           <button
             type="button"
             name="add-dimension"
-            class="btn btn-secondary fas fa-plus-square btn-lg"
+            class="btn btn-secondary fas fa-plus btn-lg"
             @click="add_dimension()"
           />
-        </td>
-      </tr>
-    </tbody>
-  </table>
+        </div>
+      </div>
+    </template>
+  </div>
 </template>
 
 <script>
