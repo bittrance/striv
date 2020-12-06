@@ -10,7 +10,6 @@ from hamcrest import *  # pylint: disable = unused-wildcard-import
 
 from . import rdbm_support
 from striv import crypto, errors, striv_app
-from striv import errors, striv_app
 
 
 bottle.debug(True)
@@ -254,6 +253,10 @@ class TestGetJob:
     def test_get_job_returns_404_on_nonexistent_job(self, app):
         app.get('/job/nonsense', status=404)
 
+    def test_returns_invalid_id(self, app):
+        response = app.get('/job/nonsense', expect_errors=True)
+        assert_that(response.json, has_entry('entity_id', 'job:nonsense'))
+
 
 @pytest.mark.usefixtures('basicdb')
 class TestPutJob:
@@ -453,7 +456,7 @@ class TestLoadState:
         assert_that(
             calling(app.app.store.load_entities)
             .with_args(('dimension', 'maturity')),
-            raises(KeyError)
+            raises(errors.EntityNotFound)
         )
         assert app.app.store.load_entities(
             ('dimension', 'another-maturity')
@@ -470,7 +473,7 @@ class TestLoadState:
         assert_that(
             calling(app.app.store.load_entities)
             .with_args(('execution', 'nomad')),
-            raises(KeyError)
+            raises(errors.EntityNotFound)
         )
         assert app.app.store.load_entities(
             ('execution', 'another-execution')

@@ -35,6 +35,16 @@ def error_handler(func):
             return func(*args, **kwargs)
         except HTTPResponse as response:
             return response
+        except errors.EntityNotFound as err:
+            return HTTPResponse(
+                body=json.dumps({
+                    'title': 'Entity not found',
+                    'detail': str(err),
+                    'entity_id': err.eid,
+                }),
+                status=404,
+                headers={'Content-type': 'application/json'}
+            )
         except Exception as err:
             logger.warning('Exception raised [err=%s]', err, exc_info=True)
             return HTTPResponse(
@@ -212,10 +222,7 @@ def get_job(job_id):
     '''
     Retrieve a single job definition.
     '''
-    try:
-        return app.store.load_entities(('job', job_id))[0]
-    except KeyError:
-        return HTTPResponse(status=404)
+    return app.store.load_entities(('job', job_id))[0]
 
 
 @app.put('/job/:job_id')
@@ -224,10 +231,7 @@ def put_job(job_id):
     Update an existing job definition. This method cannot be used to
     create new jobs.
     '''
-    try:
-        app.store.load_entities(('job', job_id))[0]
-    except KeyError:
-        return HTTPResponse(status=404)
+    app.store.load_entities(('job', job_id))[0]
     job = schemas.Job().load(request.json)
     _apply_job(job_id, job)
     return {'id': job_id}
@@ -239,10 +243,7 @@ def list_job_runs(job_id):
     Return a dict with all runs for this job.
     '''
     rnge, limit = _range_and_adjusted_limit(request)
-    try:
-        app.store.load_entities(('job', job_id))
-    except KeyError:
-        return HTTPResponse(status=404)
+    app.store.load_entities(('job', job_id))
     runs = app.store.find_entities(
         'run',
         related_to=('job', job_id),
@@ -322,10 +323,7 @@ def get_run(run_id):
     '''
     Returns a single run.
     '''
-    try:
-        return app.store.load_entities(('run', run_id))[0]
-    except KeyError:
-        return HTTPResponse(status=404)
+    return app.store.load_entities(('run', run_id))[0]
 
 
 @app.get('/run/:run_id/logs')
@@ -333,10 +331,7 @@ def get_run_log(run_id):
     '''
     Returns a dict with log streams.
     '''
-    try:
-        run = app.store.load_entities(('run', run_id))[0]
-    except KeyError:
-        return HTTPResponse(status=404)
+    run = app.store.load_entities(('run', run_id))[0]
     execution = app.store.load_entities(('execution', run['execution']))[0]
     logstore = app.logstores[execution['logstore']]
     try:

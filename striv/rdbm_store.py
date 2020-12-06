@@ -1,5 +1,5 @@
 import json
-
+from striv.errors import EntityNotFound
 
 CONN = None
 DRIVER = None
@@ -77,7 +77,10 @@ def load_entities(*query):
         candidates[typed_id] = json.loads(entity)
     entities = []
     for typed_id in typed_ids:
-        entities.append(candidates[typed_id])
+        try:
+            entities.append(candidates[typed_id])
+        except KeyError as err:
+            raise EntityNotFound(typed_id) from err
     return entities
 
 

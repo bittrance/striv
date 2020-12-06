@@ -3,6 +3,7 @@ import pytest
 
 from hamcrest import *  # pylint: disable = unused-wildcard-import
 from striv import rdbm_store
+from striv.errors import EntityNotFound
 
 from . import rdbm_support
 
@@ -68,7 +69,7 @@ class TestLoadEntities:
         assert_that(
             calling(store.load_entities)
             .with_args(('job', 'job-01'), ('job', 'job-10')),
-            raises(KeyError, pattern='job:job-10')
+            raises(EntityNotFound, pattern='job:job-10')
         )
 
 
