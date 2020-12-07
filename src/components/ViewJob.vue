@@ -1,5 +1,14 @@
 <template>
   <div>
+    <div class="float-right pt-3 px-3">
+      <button
+        type="button"
+        name="run-job-now"
+        title="Run job now"
+        class="btn btn-lg text-primary fas fa-play fa-2x"
+        @click="run_job_now"
+      />
+    </div>
     <div class="row px-3 py-3">
       <div class="col-sm">
         <small>Job name</small>
@@ -85,6 +94,9 @@ export default {
           ? new Date(this.$route.query.newest)
           : undefined,
       });
+    },
+    run_job_now() {
+      this.$store.dispatch("run_job_now", this.$route.params.job_id);
     },
   },
 };

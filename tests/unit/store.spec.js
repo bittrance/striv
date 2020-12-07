@@ -199,6 +199,30 @@ describe('actions', () => {
         })
     })
 
+    describe('run_job_now', () => {
+        it('invokes run-now endpoint', async () => {
+            fetchMock.post('path:/job/job-1/run-now', { status: 200 })
+            await store.actions.run_job_now({ state }, 'job-1')
+            expect(fetchMock).toHaveFetched()
+        })
+
+        describe('when backend errors', () => {
+            it('toasts the error', async () => {
+                fetchMock.post('path:/job/job-1/run-now', { status: 500, body: { bad: 'ness' } })
+                await store.actions.run_job_now({ state }, 'job-1')
+                expect(state.toast.error).toHaveBeenCalled()
+            })
+        })
+
+        describe('when fetch errors', () => {
+            it('toasts the error', async () => {
+                fetchMock.post('path:/job/job-1/run-now', { throws: new Error('boom!') })
+                await store.actions.run_job_now({ state }, 'job-1')
+                expect(state.toast.error).toHaveBeenCalled()
+            })
+        })
+    })
+
     describe('store_current_job', () => {
         beforeEach(() => state.current_job = job)
 

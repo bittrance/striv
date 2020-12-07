@@ -59,6 +59,17 @@ def namespace_identity(driver_config):
     return hash(driver_config['nomad_url'])
 
 
+def run_once(driver_config, jid):
+    '''
+    Run the periodic job specified by jid now.
+    '''
+    response = requests.post(
+        _endpoint(driver_config, 'v1/job/%s/periodic/force' % jid)
+    )
+    if response.status_code != requests.codes['ok']:
+        raise RuntimeError(response.text)
+
+
 def sync_job(driver_config, jid, payload):
     '''
     Create or update a Nomad job. jid will be used as Nomad job id.

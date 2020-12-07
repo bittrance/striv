@@ -14,6 +14,7 @@ DRIVER_CONFIG = {
 
 ALLOCS_ENDPOINT = DRIVER_CONFIG['nomad_url'] + '/v1/allocations'
 JOBS_ENDPOINT = DRIVER_CONFIG['nomad_url'] + '/v1/job/ze-id'
+RUN_NOW_ENDPOINT = DRIVER_CONFIG['nomad_url'] + '/v1/job/ze-id/periodic/force'
 
 
 @pytest.fixture
@@ -25,6 +26,21 @@ def backend():
 def nomad():
     with requests_mock.Mocker() as mock:
         yield mock
+
+
+def test_run_once_invokes_nomad_force(backend, nomad):
+    mock = nomad.post(RUN_NOW_ENDPOINT, json={})
+    backend.run_once(DRIVER_CONFIG, 'ze-id')
+    assert mock.called
+
+
+def test_run_once_propagates_error(backend, nomad):
+    nomad.post(RUN_NOW_ENDPOINT, status_code=500, text='BOOM')
+    assert_that(
+        calling(backend.run_once)
+        .with_args(DRIVER_CONFIG, 'ze-id'),
+        raises(RuntimeError, pattern='BOOM')
+    )
 
 
 def test_sync_job_calls_nomad(backend, nomad):

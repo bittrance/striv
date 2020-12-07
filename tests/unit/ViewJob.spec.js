@@ -45,7 +45,8 @@ describe('ViewJob', () => {
     })
 
     describe('once the store has received data', () => {
-        beforeEach(() => ({ options, $route } = mount_options({ current_job, jobs, runs })))
+        beforeEach(() => ({ options, $route, $store } = mount_options({ current_job, jobs, runs })))
+        beforeEach(() => $route.params.job_id = 'job-1')
 
         it('displays the name', () => {
             let wrapper = mount(ViewJob, options)
@@ -55,6 +56,15 @@ describe('ViewJob', () => {
         it('provide a link to the view of each run for this job', () => {
             let wrapper = mount(ViewJob, options)
             expect(wrapper.text()).toContain('/run/run-1')
+        })
+
+        describe('when the run-job-now button is pressed', () => {
+            it('invokes the store to run the job', async () => {
+                let wrapper = mount(ViewJob, options)
+                wrapper.find('[name="run-job-now"]').trigger('click')
+                await wrapper.vm.$nextTick()
+                expect($store.dispatch).toHaveBeenCalledWith('run_job_now', 'job-1')
+            })
         })
     })
 })

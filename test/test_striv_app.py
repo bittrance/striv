@@ -56,6 +56,9 @@ class RecordingBackend:
     def namespace_identity(self, driver_config):
         return hash(str(driver_config))
 
+    def run_once(self, driver_config, jid):
+        self.actions.append(('run_once', driver_config, jid))
+
     def sync_job(self, driver_config, jid, payload):
         self.actions.append(('sync', driver_config, jid, payload))
 
@@ -301,6 +304,16 @@ class TestPutJob:
         invalid_job.update({'gunk': False})
         response = app.put_json('/job/job-1', invalid_job, status=422)
         assert response.json['invalid-fields'] == {'gunk': ['Unknown field.']}
+
+
+@pytest.mark.usefixtures('basicdb', 'four_runs')
+class TestRunJobNow:
+    def test_invoke_backend(self, app, backend):
+        app.post('/job/job-1/run-now')
+        assert backend.actions == [('run_once', {'some': 'config'}, 'job-1')]
+
+    def test_returns_404_for_unknown_job(self, app):
+        app.post('/job/job-3/run-now', status=404)
 
 
 @pytest.mark.usefixtures('basicdb', 'four_runs')

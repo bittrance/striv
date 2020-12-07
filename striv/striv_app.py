@@ -237,6 +237,17 @@ def put_job(job_id):
     return {'id': job_id}
 
 
+@app.post('/job/:job_id/run-now')
+def run_job_now(job_id):
+    '''
+    Trigger an immediate run of this job.
+    '''
+    job = app.store.load_entities(('job', job_id))[0]
+    execution = app.store.load_entities(('execution', job['execution']))[0]
+    backend = app.backends[execution['driver']]
+    backend.run_once(execution['driver_config'], job_id)
+
+
 @app.get('/job/:job_id/runs')
 def list_job_runs(job_id):
     '''
