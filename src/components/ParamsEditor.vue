@@ -12,7 +12,9 @@
         <div v-if="value.type == 'secret'" class="col-sm px-0 text-secondary">
           &lt;redacted&gt;
         </div>
-        <pre v-else class="col-sm px-0 align-middle">{{ value }}</pre>
+        <blockquote v-else class="col-sm px-0" style="white-space: pre">
+          {{ value }}
+        </blockquote>
         <div class="col-sm-1 px-0 text-sm-right">
           <button
             v-if="!readonly"
@@ -25,7 +27,7 @@
       </div>
     </template>
     <div v-if="readonly && Object.entries(params).length == 0" class="row">
-      <div class="col">No parameters provided</div>
+      <div class="col text-muted px-0">No parameters provided</div>
     </div>
     <template v-if="!readonly">
       <h3 class="row">New parameter</h3>

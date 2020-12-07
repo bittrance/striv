@@ -14,7 +14,7 @@
         <small>Job name</small>
         <div>
           {{ job.name }}
-          <router-link :to="`/job/${job_id}/modify`" class="btn text-primary"
+          <router-link :to="`/job/${job_id}/modify`" class="pl-3 text-primary"
             ><i class="fas fa-edit"></i
           ></router-link>
         </div>

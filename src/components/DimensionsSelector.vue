@@ -20,7 +20,7 @@
       </div>
     </div>
     <div v-if="readonly && Object.entries(selected).length == 0" class="row">
-      <div class="col text-muted" colspan="3">No dimensions selected</div>
+      <div class="col text-muted px-0">No dimensions selected</div>
     </div>
     <template v-if="!readonly">
       <h3 class="row">Add dimension</h3>
