@@ -1,8 +1,8 @@
 <template>
   <div class="container-fluid form-group">
     <template v-for="[name, value] in Object.entries(params)" :key="name">
-      <div class="row mb-3">
-        <div class="col-sm-3 px-0 align-middle">
+      <div class="row mb-1">
+        <div class="col-sm-6 px-0 align-middle">
           <strong>{{ name }}</strong>
           <span v-if="value.type == 'secret'" class="text-muted">
             &mdash; secret</span

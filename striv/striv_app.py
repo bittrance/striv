@@ -1,5 +1,6 @@
 # pylint: disable = unsubscriptable-object
 
+import time
 import base64
 import json
 import logging
@@ -136,14 +137,15 @@ def _job_to_payload(job, value_parsers):
             value_parsers
         )
     )
-    return execution, templating.evaluate(
+    payload = templating.evaluate(
         execution['payload_template'],
         params_snippet
     )
+    return execution, payload, params_snippet
 
 
 def _apply_job(job_id, job):
-    execution, payload = _job_to_payload(job, app.apply_value_parsers)
+    execution, payload, _ = _job_to_payload(job, app.apply_value_parsers)
     backend = app.backends[execution['driver']]
     backend.sync_job(execution['driver_config'], job_id, payload)
     job['modified_at'] = datetime.now(
@@ -214,7 +216,10 @@ def evaluate_job():
     the payload for debugging.
     '''
     job = schemas.Job().load(request.json)
-    return {'payload': _job_to_payload(job, app.evaluate_value_parsers)[1]}
+    _, payload, params_snippet = _job_to_payload(
+        job, app.evaluate_value_parsers)
+    params = json.loads(templating.evaluate(params_snippet, 'null'))
+    return {'payload': payload, 'params': params}
 
 
 @app.get('/job/:job_id')

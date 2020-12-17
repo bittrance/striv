@@ -149,9 +149,16 @@ class TestListJobs:
 
 @pytest.mark.usefixtures('basicdb')
 class TestEvaluateJob:
-    def test_evaluate_job(self, app):
+    def test_returns_expanded_payload(self, app):
         response = app.post_json('/jobs/evaluate', A_JOB)
-        assert response.json == {'payload': '"ze_template"\n'}
+        assert_that(response.json, has_entry('payload', '"ze_template"\n'))
+
+    def test_returns_effective_parameters(self, app):
+        response = app.post_json('/jobs/evaluate', A_JOB)
+        assert_that(
+            response.json,
+            has_entry('params', {'ze_param': 'execution'})
+        )
 
     def test_redacts_secrets(self, app):
         execution = AN_EXECUTION.copy()
@@ -162,7 +169,7 @@ class TestEvaluateJob:
             'param': {'type': 'secret', 'encrypted': 'verrah-secret'}
         }
         response = app.post_json('/jobs/evaluate', job)
-        assert response.json == {'payload': '"<redacted>"\n'}
+        assert_that(response.json, has_entry('payload', '"<redacted>"\n'))
 
     def test_ignores_readonly_modified_at(self, app):
         job = A_JOB.copy()
