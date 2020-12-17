@@ -17,6 +17,7 @@
             args: ['-c', params.command],
           },
           Driver: 'docker',
+          Env: params.env,
           Name: 'task1',
           Resources: {
             CPU: 500,

@@ -4,16 +4,16 @@
       <div class="row mb-1">
         <div class="col-sm-6 px-0 align-middle">
           <strong>{{ name }}</strong>
-          <span v-if="value.type == 'secret'" class="text-muted">
-            &mdash; secret</span
-          >
-          <span v-else class="text-muted"> &mdash; text</span>
         </div>
-        <div v-if="value.type == 'secret'" class="col-sm px-0 text-secondary">
+        <div
+          v-if="value._striv_type == 'secret'"
+          class="col-sm px-0 text-secondary"
+        >
+          <span v-if="!readonly" class="text-muted">secret: </span>
           &lt;redacted&gt;
         </div>
         <blockquote v-else class="col-sm px-0" style="white-space: pre">
-          {{ value }}
+          <span v-if="!readonly" class="text-muted">text: </span>{{ value }}
         </blockquote>
         <div class="col-sm-1 px-0 text-sm-right">
           <button
@@ -21,7 +21,7 @@
             type="button"
             name="delete-param"
             class="btn btn-lg border fas fa-trash-alt"
-            @click="delete_param(name, value['type'] || 'text')"
+            @click="delete_param(name, value['_striv_type'] || 'text')"
           />
         </div>
       </div>
@@ -105,7 +105,7 @@ export default {
         let value;
         if (this.type == "secret") {
           value = {
-            type: "secret",
+            _striv_type: "secret",
             encrypted: await encrypt_value(this.public_key, this.value),
           };
         } else {

@@ -11,7 +11,7 @@ from striv import templating
 @pytest.fixture()
 def value_parsers():
     return {
-        'string': lambda v: v,
+        'default': lambda v: v,
         'object': lambda v: v['value'],
     }
 
@@ -45,7 +45,7 @@ class TestMaterializeLayer:
     def test_applies_value_parsers(self, value_parsers):
         layer = templating.materialize_layer(
             'ze-layer',
-            {'prip': {'type': 'object', 'value': 'object-value'}},
+            {'prip': {'_striv_type': 'object', 'value': 'object-value'}},
             value_parsers
         )
         assert layer == ('ze-layer', '{prip: "object-value"}')
@@ -53,7 +53,7 @@ class TestMaterializeLayer:
     def test_applies_value_parsers_nestedly(self, value_parsers):
         layer = templating.materialize_layer(
             'ze-layer',
-            {'prip.prup': {'type': 'object', 'value': 'object-value'}},
+            {'prip.prup': {'_striv_type': 'object', 'value': 'object-value'}},
             value_parsers
         )
         assert layer == ('ze-layer', '{prip: {prup: "object-value"}}')
@@ -67,7 +67,7 @@ class TestMaterializeLayer:
         )
 
     def test_complains_about_missing_type(self, value_parsers):
-        value = {'prip': {'type': 'unknown', 'value': 'object-value'}}
+        value = {'prip': {'_striv_type': 'unknown', 'value': 'object-value'}}
         assert_that(
             calling(templating.materialize_layer)
             .with_args('ze-layer', value, value_parsers),
@@ -77,7 +77,7 @@ class TestMaterializeLayer:
     def test_wraps_parser_exception(self, value_parsers):
         def boom(_):
             raise KeyError('boom')
-        value_parsers['string'] = boom
+        value_parsers['default'] = boom
         assert_that(
             calling(templating.materialize_layer)
             .with_args('ze-layer', {'prip': 'prop'}, value_parsers),

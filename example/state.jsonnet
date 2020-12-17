@@ -48,7 +48,7 @@
       driver_config: {
         nomad_url: 'http://localhost:4646'
       },
-      default_params: { },
+      default_params: { env: {} },
       payload_template: importstr 'nomad_periodic.jsonnet'
     }
   }

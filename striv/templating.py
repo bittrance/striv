@@ -29,14 +29,10 @@ def _write_jsonnet(buf, tree):
 
 
 def _find_parser(value, value_parsers):
-    if isinstance(value, dict):
-        try:
-            typ = value['type']
-        except KeyError:
-            raise ValidationError(
-                value, 'value object %s missing type' % value)
+    if isinstance(value, dict) and value.get('_striv_type'):
+        typ = value['_striv_type']
     else:
-        typ = 'string'
+        typ = 'default'
     parser = value_parsers.get(typ)
     if not parser:
         raise ValidationError(value, 'no parser found for type %s' % typ)

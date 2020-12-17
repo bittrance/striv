@@ -166,7 +166,7 @@ class TestEvaluateJob:
         app.app.store.upsert_entities(('execution', 'nomad', execution))
         job = A_JOB.copy()
         job['params'] = {
-            'param': {'type': 'secret', 'encrypted': 'verrah-secret'}
+            'param': {'_striv_type': 'secret', 'encrypted': 'verrah-secret'}
         }
         response = app.post_json('/jobs/evaluate', job)
         assert_that(response.json, has_entry('payload', '"<redacted>"\n'))
@@ -214,7 +214,7 @@ class TestCreateJob:
         job = A_JOB.copy()
         job['params'] = {
             'param': {
-                'type': 'secret',
+                '_striv_type': 'secret',
                 'encrypted': crypto.encrypt_value(app.app.public_key_pem, 'verrah-secret')
             }
         }
@@ -227,14 +227,14 @@ class TestCreateJob:
         job = A_JOB.copy()
         job['params'] = {
             'param': {
-                'type': 'secret',
+                '_striv_type': 'secret',
                 'encrypted': crypto.encrypt_value(unknown_key, 'verrah-secret')
             }
         }
         response = app.post_json('/jobs', job, status=422)
         assert_that(
             response.json,
-            has_entry('source', has_entry('type', 'secret'))
+            has_entry('source', has_entry('_striv_type', 'secret'))
         )
 
     def test_create_job_rejects_invalid_input_with_detailed_error(self, app):

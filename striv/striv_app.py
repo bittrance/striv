@@ -456,7 +456,7 @@ def configure_encryption(app, private_key_pem):
 def configure(app, args):
     logger.setLevel(args.log_level)
     app.apply_value_parsers = {
-        'string': lambda v: v
+        'default': lambda v: v
     }
     app.evaluate_value_parsers = app.apply_value_parsers.copy()
     configure_encryption(app, args.encryption_key)

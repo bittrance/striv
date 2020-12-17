@@ -94,7 +94,7 @@ describe('ParamsEditor', () => {
                 expect(wrapper.emitted()).toStrictEqual({
                     'add-param': [
                         ['param3', {
-                            type: 'secret',
+                            _striv_type: 'secret',
                             encrypted: expect.stringMatching('.{255}')
                         }]
                     ]
