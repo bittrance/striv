@@ -159,6 +159,8 @@ describe('actions', () => {
     })
 
     describe('load_jobs', () => {
+        beforeEach(() => fetchMock.get('path:/job/job-1/runs', { 'run-2': run2 }))
+
         it('loads a single job', async () => {
             fetchMock.get('path:/jobs', { 'job-1': job })
             await store.actions.load_jobs({ commit, state })
@@ -168,6 +170,20 @@ describe('actions', () => {
                     'job-1': expect.objectContaining({ modified_at: expect.any(Date) })
                 })
             )
+        })
+
+        it('requests runs for returned jobs', async () => {
+            fetchMock.get('path:/jobs', { 'job-1': job })
+            await store.actions.load_jobs({ commit, state }, true)
+            expect(commit).toHaveBeenCalledWith(
+                'load_jobs',
+                expect.objectContaining({
+                    'job-1': expect.objectContaining({
+                        latest_run: expect.objectContaining({ status: 'successful' })
+                    })
+                })
+            )
+
         })
 
         describe('when backend errors', () => {

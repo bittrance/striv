@@ -149,13 +149,23 @@ export default {
         async load_job_runs({ commit, state }, { job_id, newest }) {
             await load_runs(commit, state, `/job/${job_id}/runs`, newest)
         },
-        async load_jobs({ commit, state }) {
+        async load_jobs({ commit, state }, with_latest_run) {
             try {
                 const response = await fetch('/jobs')
                 if (response.ok) {
                     const jobs = await response.json()
                     for (const job of Object.values(jobs)) {
                         iso_string_to_date(job, JOB_DATE_FIELDS)
+                    }
+                    if (with_latest_run) {
+                        await Promise.all(
+                            Object.entries(jobs).map(([job_id, job]) =>
+                                fetch(`/job/${job_id}/runs?limit=1`)
+                                    .then(async (response) => {
+                                        job.latest_run = Object.values(await response.json())[0]
+                                    })
+                            )
+                        )
                     }
                     commit('load_jobs', jobs)
                 } else {

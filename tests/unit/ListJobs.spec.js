@@ -13,7 +13,7 @@ describe('ListJobs', () => {
 
     it('asks store to load jobs', () => {
         mount(ListJobs, options)
-        expect($store.dispatch).toHaveBeenCalledWith('load_jobs')
+        expect($store.dispatch).toHaveBeenCalledWith('load_jobs', true)
     })
 
     it('lists jobs', () => {

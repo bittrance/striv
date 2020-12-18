@@ -15,8 +15,8 @@
     </div>
     <table class="table table-hover">
       <thead>
-        <th scope="col" class="text-center">Job</th>
-        <th scope="col">Status</th>
+        <th scope="col" class="text-center">Status</th>
+        <th scope="col">Job</th>
         <th scope="col" class="text-right">Started at</th>
         <th scope="col" class="text-right">Duration</th>
       </thead>
@@ -68,9 +68,3 @@ export default {
   },
 };
 </script>
-<style scoped>
-.status {
-  font-size: 1.5rem;
-  width: 3rem;
-}
-</style>

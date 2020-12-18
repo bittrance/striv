@@ -4,7 +4,7 @@ import ParamsEditor from '@/components/ParamsEditor.vue'
 describe('ParamsEditor', () => {
     const params = {
         param1: 'value1',
-        param2: { type: 'secret', encrypted: 'encrypted' }
+        param2: { _striv_type: 'secret', encrypted: 'encrypted' }
     }
     const public_key = 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAts0tCjEj+FLJrwzFaFgoeQEAZ8/tWaH2pWM5sisaxmVH/2c32fgMVBQbs5hrr/EpwHLCR+S8W3s908Ne91L+n9QCEJCesDGJRljHrINYxqa8ilhzgQIH33cMvqtvrOWh43bPQUbHVSzNY6/TTsYX9Qn6h5EwV3j02MkgFGF/4yRHuqsMNMTO8o554xzqaoVgV2EAk+GREMtt07RlUXOg e2Ty3VXiJOfHWE7kUYgFhSBtm7AQK3KOHKVsACHBi6z+nIF2uDBeBr26AP5kMab7uQp6M2h/e2VVWwr743UsZoyXEsEchYzBR6RdE32pDVmR84oOlzILj0XcYDCjH/Xq/wIDAQAB'
 

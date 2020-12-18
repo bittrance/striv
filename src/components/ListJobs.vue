@@ -1,7 +1,8 @@
 <template>
-  <div class="px-3 py-3">
+  <div>
     <table class="table table-hover">
       <thead>
+        <th scope="col" class="text-center">Status</th>
         <th scope="col">Name</th>
         <th scope="col">Dimensions</th>
         <th scope="col" />
@@ -9,6 +10,9 @@
 
       <tbody>
         <tr v-for="[id, job] in jobs" :key="id">
+          <td class="status py-0 text-center align-middle">
+            <i :class="statusClass(job.latest_run?.status)" />
+          </td>
           <th scope="row">
             <router-link :to="`/job/${id}`">
               {{ job.name }}
@@ -34,6 +38,7 @@
 </template>
 
 <script>
+import { statusClass } from "@/formatting.js";
 export default {
   name: "list-jobs",
   computed: {
@@ -42,7 +47,10 @@ export default {
     },
   },
   mounted() {
-    this.$store.dispatch("load_jobs");
+    this.$store.dispatch("load_jobs", true);
+  },
+  methods: {
+    statusClass,
   },
 };
 </script>
