@@ -146,3 +146,17 @@ def test_upsert_entities_updates_sortkey(store):
     store.upsert_entities(('job', 'job-01', {'name': 'job-00'}))
     found = store.find_entities('job', range=('asc', None, 'job-00'))
     assert found.keys() == {'job-01'}
+
+
+@pytest.mark.usefixtures('five_jobs')
+class TestDeleteEntities:
+    def test_delete_job(self, store):
+        store.delete_entities(('job', 'job-01'))
+        assert len(store.find_entities('job')) == 4
+
+    def test_fails_on_unknown_job(self, store):
+        assert_that(
+            calling(store.delete_entities)
+            .with_args(('job', 'job-99')),
+            raises(EntityNotFound)
+        )

@@ -1,4 +1,4 @@
-import { mount, shallowMount } from '@vue/test-utils'
+import { mount } from '@vue/test-utils'
 import { mount_options } from '../utils'
 import ListRuns from '@/components/ListRuns.vue'
 
@@ -15,20 +15,35 @@ describe('ListRuns', () => {
 
     beforeEach(() => ({ options, $route } = mount_options({ jobs, runs })))
 
-    it('lists runs in descending chronology', () => {
-        let wrapper = mount(ListRuns, options)
-        expect(wrapper.text()).toContain('Job 1')
-        expect(wrapper.text()).toContain('Job 2')
+    describe('once the store has received data', () => {
+        it('lists runs in descending chronology', () => {
+            let wrapper = mount(ListRuns, options)
+            expect(wrapper.text()).toContain('Job 1')
+            expect(wrapper.text()).toContain('Job 2')
+        })
+
+        it('navigates to current url', () => {
+            $route.path = '/some/path'
+            let wrapper = mount(ListRuns, options)
+            expect(wrapper.text()).toContain('/some/path')
+        })
+
+        it('contains navigation to older runs', async () => {
+            let wrapper = mount(ListRuns, options)
+            expect(wrapper.text()).toContain('?newest=2020-10-31T23:40:00')
+        })
     })
 
-    it('navigates to current url', () => {
-        $route.path = '/some/path'
-        let wrapper = mount(ListRuns, options)
-        expect(wrapper.text()).toContain('/some/path')
-    })
+    describe('when a runs job has been deleted', () => {
+        let jobs = {
+            'job-2': { name: 'Job 2', execution: 'ze-execution' },
+        }
 
-    it('contains navigation to older runs', async () => {
-        let wrapper = mount(ListRuns, options)
-        expect(wrapper.text()).toContain('?newest=2020-10-31T23:40:00')
+        beforeEach(() => ({ options, $route } = mount_options({ jobs, runs })))
+
+        it('it renders its name as deleted', () => {
+            let wrapper = mount(ListRuns, options)
+            expect(wrapper.text()).toContain('<deleted>')
+        })
     })
 })

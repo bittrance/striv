@@ -195,6 +195,19 @@ export default {
                 state.toast.error(error, TOAST_OPTIONS)
             }
         },
+        async delete_job({ state }, job_id) {
+            try {
+                let response = await fetch(`/job/${job_id}`, { method: 'DELETE' })
+                if (response.ok) {
+                    state.toast.success(`Deleted job ${job_id}`, TOAST_OPTIONS)
+                } else {
+                    const message = await response.text()
+                    state.toast.error(message, TOAST_OPTIONS)
+                }
+            } catch (error) {
+                state.toast.error(error, TOAST_OPTIONS)
+            }
+        },
         async run_job_now({ state }, job_id) {
             try {
                 let response = await fetch(`/job/${job_id}/run-now`, { method: 'POST' })

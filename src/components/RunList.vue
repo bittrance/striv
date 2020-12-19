@@ -26,9 +26,12 @@
             <i :class="statusClass(run.status)" />
           </td>
           <th class="text-nowrap" scope="row">
-            <router-link :to="`/run/${id}`">
-              {{ jobs[run.job_id]?.name }}
+            <router-link v-if="jobs[run.job_id]" :to="`/run/${id}`">
+              {{ jobs[run.job_id].name }}
             </router-link>
+            <template v-else>
+              <span class="text-muted">&lt;deleted&gt;</span>
+            </template>
           </th>
           <td class="text-right">
             {{ run.started_at ? compactDateTime(run.started_at) : "&mdash;" }}

@@ -3,9 +3,9 @@ import { mount_options } from '../utils'
 import ViewJob from '@/components/ViewJob.vue'
 
 describe('ViewJob', () => {
-    let options, $route, $store
+    let options, $route, $router, $store
     let current_job = { name: 'Job 1', execution: 'ze-execution' }
-    let jobs = current_job
+    let jobs = { 'job-1': current_job }
     let runs = {
         'run-1': {
             job_id: 'job-1',
@@ -45,8 +45,11 @@ describe('ViewJob', () => {
     })
 
     describe('once the store has received data', () => {
-        beforeEach(() => ({ options, $route, $store } = mount_options({ current_job, jobs, runs })))
-        beforeEach(() => $route.params.job_id = 'job-1')
+        beforeEach(() => {
+            ({ options, $route, $router, $store } = mount_options({ current_job, jobs, runs }))
+            $route.params.job_id = 'job-1'
+            $store.dispatch.mockReturnValue(Promise.resolve())
+        })
 
         it('displays the name', () => {
             let wrapper = mount(ViewJob, options)
@@ -56,6 +59,30 @@ describe('ViewJob', () => {
         it('provide a link to the view of each run for this job', () => {
             let wrapper = mount(ViewJob, options)
             expect(wrapper.text()).toContain('/run/run-1')
+        })
+
+        describe('when the delete button is pressed', () => {
+            let wrapper
+            beforeEach(async () => {
+                wrapper = mount(ViewJob, options)
+                await wrapper.find('[name="delete-job"]').trigger('click')
+            })
+
+            it('nothing happens', async () => {
+                expect($store.dispatch).not.toHaveBeenCalledWith('delete_job')
+            })
+
+            describe('and then pressed again', () => {
+                beforeEach(async () => await wrapper.find('[name="delete-job"]').trigger('click'))
+
+                it('deletes the job', async () => {
+                    expect($store.dispatch).toHaveBeenCalledWith('delete_job', 'job-1')
+                })
+
+                it('navigates back whence we came', () => {
+                    expect($router.back).toHaveBeenCalled()
+                })
+            })
         })
 
         describe('when the run-job-now button is pressed', () => {

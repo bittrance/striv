@@ -147,6 +147,19 @@ def upsert_entities(*entities):
     _cursor().executemany(_maybe_qm(new_relations), list(_relation_keys(entities)))
 
 
+def delete_entities(*query):
+    '''
+    Delete entities from the store. The query is a list of (type, id) 
+    tuples. Raises EntityNotFound when asked to delete non-existent entities.
+    '''
+    load_entities(*query)
+    delete_entities = 'DELETE FROM entities WHERE typed_id = %s'
+    delete_relations = 'DELETE FROM relations WHERE typed_id = %s'
+    ids = [('%s:%s' % (typ, eid),) for (typ, eid) in query]
+    _cursor().executemany(_maybe_qm(delete_entities), ids)
+    _cursor().executemany(_maybe_qm(delete_relations), ids)
+
+
 # TODO: replace_type needs to know what index to chuck out
 def replace_type(typ, entities):
     '''

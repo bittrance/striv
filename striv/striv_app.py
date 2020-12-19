@@ -242,6 +242,15 @@ def put_job(job_id):
     return {'id': job_id}
 
 
+@app.delete('/job/:job_id')
+def delete_job(job_id):
+    '''
+    Delete a job definition. Note that this job's runs are not deleted.
+    '''
+    app.store.delete_entities(('job', job_id))
+    return {'id': job_id}
+
+
 @app.post('/job/:job_id/run-now')
 def run_job_now(job_id):
     '''

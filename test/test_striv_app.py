@@ -313,6 +313,21 @@ class TestPutJob:
         assert response.json['invalid-fields'] == {'gunk': ['Unknown field.']}
 
 
+class TestDeleteJob:
+    def test_deletes_job(self, app):
+        app.app.store.upsert_entities(('job', 'job-1', A_JOB))
+        app.delete('/job/job-1')
+        assert app.app.store.find_entities('job') == {}
+
+    def test_returns_id(self, app):
+        app.app.store.upsert_entities(('job', 'job-1', A_JOB))
+        response = app.delete('/job/job-1')
+        assert response.json['id'] == 'job-1'
+
+    def test_returns_404_on_nonexistent_job(self, app):
+        app.delete('/job/job-1', status=404)
+
+
 @pytest.mark.usefixtures('basicdb', 'four_runs')
 class TestRunJobNow:
     def test_invoke_backend(self, app, backend):
