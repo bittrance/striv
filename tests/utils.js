@@ -1,3 +1,5 @@
+import VueToastificationPlugin from 'vue-toastification'
+
 const MockRouterLink = {
     name: 'router-link',
     props: ['to', 'class'],
@@ -18,7 +20,8 @@ export function mount_options(state) {
     let options = {
         global: {
             components: { 'router-link': MockRouterLink },
-            mocks: { $route, $router, $store }
+            mocks: { $route, $router, $store },
+            plugins: [VueToastificationPlugin],
         }
     }
     return { options, $route, $router, $store }
