@@ -1,4 +1,4 @@
-from psycopg2 import connect
+from psycopg2 import connect, errors
 
 ENTITY_TABLE_DEF = '''
 CREATE TABLE IF NOT EXISTS entities (
@@ -23,9 +23,22 @@ CREATE INDEX IF NOT EXISTS lookup ON relations (relation, secondary_key)
 
 
 def connection(connargs):
+    if connargs.pop('create_database', False):
+        ensure_database(connargs)
     conn = connect(**connargs)
     conn.autocommit = True
     return conn
+
+
+def ensure_database(connargs):
+    props = connargs.copy()
+    db = props.pop('dbname')
+    conn = connect(**props)
+    conn.autocommit = True
+    try:
+        conn.cursor().execute('CREATE DATABASE %s' % db)
+    except errors.DuplicateDatabase:
+        pass
 
 
 def ensure_ddl(conn):

@@ -1,4 +1,5 @@
 import os
+import uuid
 
 configurations = [
     [
@@ -7,7 +8,8 @@ configurations = [
             'user': 'root',
             'password': 'Cmdu1OG2vLfL',
             'host': '127.0.0.1',
-            'database': 'striv'
+            'database': 'striv_test',
+            'create_database': True,
         }
     ],
     [
@@ -16,7 +18,8 @@ configurations = [
             'user': 'striv',
             'password': 'Cmdu1OG2vLfL',
             'host': '127.0.0.1',
-            'dbname': 'striv'
+            'dbname': 'striv_test',
+            'create_database': True,
         }
     ],
     [

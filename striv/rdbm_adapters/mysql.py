@@ -23,9 +23,18 @@ CREATE INDEX lookup ON relations (relation, secondary_key)
 
 
 def connection(connargs):
+    if connargs.pop('create_database', False):
+        ensure_database(connargs)
     conn = connect(**connargs)
     conn.autocommit = True
     return conn
+
+
+def ensure_database(connargs):
+    props = connargs.copy()
+    db = props.pop('database')
+    c = connect(**props)
+    c.cursor().execute('CREATE DATABASE IF NOT EXISTS %s' % db)
 
 
 def ensure_ddl(conn):
