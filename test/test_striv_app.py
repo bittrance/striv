@@ -8,7 +8,7 @@ import pytest
 import webtest
 from hamcrest import *  # pylint: disable = unused-wildcard-import
 
-from . import rdbm_support
+from . import rdbm_support, utils
 from striv import crypto, errors, striv_app
 
 
@@ -43,56 +43,21 @@ A_RUN = {
 }
 
 
-class Args:
-    def __init__(self, args):
-        self.__dict__.update(args)
-
-
-class RecordingBackend:
-    def __init__(self):
-        self.actions = []
-        self.runs = {}
-
-    def namespace_identity(self, driver_config):
-        return hash(str(driver_config))
-
-    def run_once(self, driver_config, jid):
-        self.actions.append(('run_once', driver_config, jid))
-
-    def sync_job(self, driver_config, jid, payload):
-        self.actions.append(('sync', driver_config, jid, payload))
-
-    def fetch_runs(self, _, job_ids):
-        self.actions.append(('refresh-runs', job_ids))
-        return self.runs
-
-
-class RecordingLogstore:
-    def __init__(self):
-        self.actions = []
-        self.logs = {}
-
-    def fetch_logs(self, driver_config, run_id):
-        self.actions.append(('fetch_logs', driver_config, run_id))
-        if isinstance(self.logs, Exception):
-            raise self.logs  # pylint: disable = raising-bad-type
-        return self.logs
-
-
 @pytest.fixture()
 def backend():
-    return RecordingBackend()
+    return utils.RecordingBackend()
 
 
 @pytest.fixture()
 def logstore():
-    return RecordingLogstore()
+    return utils.RecordingLogstore()
 
 
 @pytest.fixture(params=rdbm_support.configurations)
 def app(request, backend, logstore):
     driver, connargs = request.param
-    args = Args({
+    args = utils.Args({
+        'archive_config': {},
         'log_level': 'DEBUG',
         'store_type': driver,
         'store_config': json.dumps(connargs),
@@ -448,7 +413,7 @@ class TestGetRunLog:
         logstore.logs = {'run-1/stderr': 'ze-logs'}
         app.get('/run/run-1/logs')
         assert logstore.actions == [
-            ('fetch_logs', {'some': 'config'}, 'run-1')
+            ('fetch_logs', {'some': 'config'}, 'run-1', A_RUN)
         ]
 
     def test_returns_logs(self, app, logstore):
