@@ -72,11 +72,16 @@ class RecordingLogstore:
         self.actions = []
         self.logs = {}
 
-    def fetch_logs(self, driver_config, run_id):
-        self.actions.append(('fetch_logs', driver_config, run_id))
+    def fetch_log_summary(self, driver_config, run_id):
+        self.actions.append(('fetch_log_summary', driver_config, run_id))
         if isinstance(self.logs, Exception):
             raise self.logs  # pylint: disable = raising-bad-type
         return self.logs
+
+    def fetch_log(self, driver_config, run_id, logname):
+        self.actions.append(
+            ('fetch_log', driver_config, run_id, logname)
+        )
 
 
 @pytest.fixture()
@@ -443,12 +448,12 @@ class TestGetRun:
 
 
 @pytest.mark.usefixtures('basicdb', 'four_runs')
-class TestGetRunLog:
+class TestGetRunLogSummary:
     def test_invokes_logstore(self, app, logstore):
         logstore.logs = {'run-1/stderr': 'ze-logs'}
         app.get('/run/run-1/logs')
         assert logstore.actions == [
-            ('fetch_logs', {'some': 'config'}, 'run-1')
+            ('fetch_log_summary', {'some': 'config'}, 'run-1')
         ]
 
     def test_returns_logs(self, app, logstore):
@@ -460,6 +465,16 @@ class TestGetRunLog:
         logstore.logs = errors.RunNotFound('boom!')
         response = app.get('/run/run-1/logs', status=410)
         assert response.json['detail'] == 'boom!'
+
+
+@pytest.mark.usefixtures('basicdb', 'four_runs')
+class TestGetRunLogSummary:
+    def test_invokes_logstore(self, app, logstore):
+        logstore.logs = {'run-1/stderr': 'ze-logs'}
+        app.get('/run/run-1/log/alloc-1/stderr')
+        assert logstore.actions == [
+            ('fetch_log', {'some': 'config'}, 'run-1', 'alloc-1/stderr')
+        ]
 
 
 @pytest.mark.usefixtures('basicdb')

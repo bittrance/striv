@@ -284,5 +284,18 @@ export default {
                 commit('current_job_id', run.job_id)
             }
         },
+        async load_log({ state }, { run_id, logname }) {
+            try {
+                const response = await fetch(`/run/${run_id}/log/${logname}`)
+                if (response.ok) {
+                    return await response.text()
+                } else {
+                    const message = await response.text()
+                    state.toast.error(message, TOAST_OPTIONS)
+                }
+            } catch (error) {
+                state.toast.error(error, TOAST_OPTIONS)
+            }
+        },
     }
 }

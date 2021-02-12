@@ -352,15 +352,15 @@ def get_run(run_id):
 
 
 @app.get('/run/:run_id/logs')
-def get_run_log(run_id):
+def get_run_log_summary(run_id):
     '''
-    Returns a dict with log streams.
+    Returns a dict with tails of available log streams.
     '''
     run = app.store.load_entities(('run', run_id))[0]
     execution = app.store.load_entities(('execution', run['execution']))[0]
     logstore = app.logstores[execution['logstore']]
     try:
-        return logstore.fetch_logs(execution['driver_config'], run_id)
+        return logstore.fetch_log_summary(execution['driver_config'], run_id)
     except errors.RunNotFound as err:
         return HTTPResponse(
             status=410,
@@ -369,6 +369,27 @@ def get_run_log(run_id):
                 'detail': str(err),
             }),
             headers={'Content-type': 'application/json'},
+        )
+
+
+@app.get('/run/:run_id/log/<logname:path>')
+def get_run_log(run_id, logname):
+    '''
+    Retrieve a single full log file.
+    '''
+    run = app.store.load_entities(('run', run_id))[0]
+    execution = app.store.load_entities(('execution', run['execution']))[0]
+    logstore = app.logstores[execution['logstore']]
+    try:
+        return logstore.fetch_log(execution['driver_config'], run_id, logname)
+    except errors.RunNotFound as err:
+        return HTTPResponse(
+            status=404,
+            body=json.dumps({
+                'title': 'run not found',
+                'detail': str(err),
+            }),
+            headers={'Content-type': 'plain/text'},
         )
 
 

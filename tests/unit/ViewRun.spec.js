@@ -30,11 +30,14 @@ describe('ViewRun', () => {
     })
 
     describe('with run data loaded', () => {
-        beforeEach(() => ({ options, $route, $store } = mount_options({
-            current_run,
-            current_run_logs,
-            current_job,
-        })))
+        beforeEach(() => {
+            ({ options, $route, $store } = mount_options({
+                current_run,
+                current_run_logs,
+                current_job,
+            }))
+            $route.params.run_id = 'run-1'
+        })
 
         it('renders an edit link for the job', () => {
             let wrapper = mount(ViewRun, options)
@@ -50,7 +53,6 @@ describe('ViewRun', () => {
         it('renders logs in compact format', () => {
             let wrapper = mount(ViewRun, options)
             expect(wrapper.findAll('.log-container').length).toEqual(2)
-            expect(wrapper.findAll('.log-pane').length).toEqual(2)
         })
 
         describe('given a log to expand', () => {
@@ -59,7 +61,6 @@ describe('ViewRun', () => {
             it('it does not render that log expanded', () => {
                 let wrapper = mount(ViewRun, options)
                 expect(wrapper.findAll('.log-container').length).toEqual(1)
-                expect(wrapper.findAll('.log-pane').length).toEqual(1)
             })
         })
     })

@@ -59,9 +59,8 @@
           :class="{ 'log-container': is_compact(name) }"
           class="bg-light w-100"
         >
-          <pre :class="{ 'log-pane': is_compact(name) }">{{
-            payload.trim()
-          }}</pre>
+          <pre v-if="is_compact(name)">{{ payload.trim() }}</pre>
+          <pre v-else>{{ full_log }}</pre>
         </div>
       </div>
     </div>
@@ -71,6 +70,11 @@
 import { compactDateTime, statusClass } from "@/formatting.js";
 export default {
   name: "view-run",
+  data() {
+    return {
+      full_log: null,
+    };
+  },
   computed: {
     job() {
       return this.$store.state.current_job;
@@ -91,11 +95,17 @@ export default {
   methods: {
     compactDateTime,
     statusClass,
-    current_run() {
+    async current_run() {
       if (!this.$route.params.run_id) {
         return;
       }
       this.$store.dispatch("load_run", this.$route.params.run_id);
+      if (this.$route.query.expand) {
+        this.full_log = await this.$store.dispatch("load_log", {
+          run_id: this.$route.params.run_id,
+          logname: this.$route.query.expand,
+        });
+      }
     },
     is_compact(logname) {
       return this.$route.query.expand != logname;
@@ -108,12 +118,6 @@ small {
   color: rgb(192, 192, 192);
 }
 .log-container {
-  height: 15rem;
   overflow: hidden;
-  position: relative;
-}
-.log-pane {
-  position: absolute;
-  bottom: 0;
 }
 </style>
