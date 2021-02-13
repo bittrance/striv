@@ -40,13 +40,15 @@ jobs:
           nc -z 127.0.0.1 5432 || exit 1
           pytest test/
           docker-compose down
-      - name: Build Docker image
+      - name: Build Docker images
         run: |
           npm run build
           docker build -t bittrance/striv .
+          docker build -t bittrance/striv-tools .
       - name: Deploy to DockerHub
         env:
           DOCKER_SECRET: ${{ secrets.DOCKER_SECRET }}
         run: |
           echo "$DOCKER_SECRET" | docker login --username bittrance --password-stdin
           docker push bittrance/striv
+          docker push bittrance/striv-tools

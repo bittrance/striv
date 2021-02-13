@@ -24,6 +24,7 @@ parser.add_argument(
 )
 parser.add_argument(
     '--refresh-interval',
+    type=int,
     default=os.environ.get(
         'STRIV_REFRESH_INTERVAL',
         60000
@@ -32,6 +33,7 @@ parser.add_argument(
 )
 parser.add_argument(
     '--refresh-backoff',
+    type=int,
     default=os.environ.get(
         'STRIV_REFRESH_BACKOFF',
         5000
