@@ -56,13 +56,13 @@ def logstore():
 @pytest.fixture(params=rdbm_support.configurations)
 def app(request, backend, logstore):
     driver, connargs = request.param
-    args = utils.Args({
-        'archive_config': {},
-        'log_level': 'DEBUG',
-        'store_type': driver,
-        'store_config': json.dumps(connargs),
-        'encryption_key': crypto.generate_key(),
-    })
+    args = utils.Args(
+        archive_config={},
+        log_level='DEBUG',
+        store_type=driver,
+        store_config=json.dumps(connargs),
+        encryption_key=crypto.generate_key(),
+    )
     striv_app.configure(striv_app.app, args)
     striv_app.app.backends['nomad'] = backend
     striv_app.app.logstores['nomad'] = logstore
