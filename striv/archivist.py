@@ -62,6 +62,9 @@ def runs_since(base, start):
     path = f'/runs?lower={start}'
     while True:
         response = requests.get(base + path)
+        if response.status_code != requests.codes['ok']:
+            raise RuntimeError(
+                f'Failed retrieving runs [start={start}, status={response.status_code}, body={response.text}]')
         for run_id, run in response.json().items():
             logger.debug(
                 'Received run [id=%s, status=%s]', run_id, run['status'])
@@ -74,18 +77,23 @@ def runs_since(base, start):
 
 class UniqueFinishedRuns:
     def __init__(self):
-        self.seen_runs = set()
+        self.seen_runs = {}
 
     def process(self, runs):
         '''Generator yielding previously unknown finished runs.'''
         for run_id, run in runs:
             if run['status'] in ['successful', 'failed']:
                 if run_id not in self.seen_runs:
-                    self.seen_runs.add(run_id)
+                    self.seen_runs[run_id] = run['created_at']
                     yield (run_id, run)
 
     def prune(self, earliest):
-        pass
+        to_prune = [
+            run_id for run_id, created_at in self.seen_runs.items()
+            if created_at < earliest
+        ]
+        for run_id in to_prune:
+            del self.seen_runs[run_id]
 
 
 class OldestUnfinishedRun:
@@ -94,7 +102,6 @@ class OldestUnfinishedRun:
 
     def process(self, runs):
         '''The oldest observed run that is not done.'''
-        self.oldest = None
         for run_id, run in runs:
             if self.oldest is None:
                 self.oldest = run['created_at']
@@ -106,25 +113,48 @@ class OldestUnfinishedRun:
         return self.oldest
 
 
+def run_once(start, unique_filter, remember_oldest, base_url):
+    runs = unique_filter.process(
+        remember_oldest.process(
+            runs_since(base_url, start)
+        )
+    )
+    for run_id, run in runs:
+        path = f'/run/{run_id}/logs'
+        response = requests.get(base_url + path)
+        if response.status_code == requests.codes['ok']:
+            logger.info(
+                'Triggering log archiving [run=%s. created=%s]',
+                run_id,
+                run['created_at']
+            )
+        else:
+            logger.warning(
+                'Log archiving failed [run=%s. created=%s, status=%d, body=%s]',
+                run_id,
+                run['created_at'],
+                response.status_code,
+                response.text
+            )
+    start = remember_oldest.next_start() or start
+    unique_filter.prune(start)
+    return start
+
+
 def run(args):
     start = start_from_max_age(args.max_age)
     unique_filter = UniqueFinishedRuns()
     remember_oldest = OldestUnfinishedRun()
+    logger.warning(
+        'Archivist starting [base_url=%s, start=%s, interval=%d]',
+        args.worker_base_url,
+        start,
+        args.archive_interval
+    )
     while True:
-        runs = unique_filter.process(
-            remember_oldest.process(
-                runs_since(args.worker_base_url, start)
-            )
-        )
-        for run_id, _ in runs:
-            path = f'/run/{run_id}/logs'
-            response = requests.get(args.worker_base_url + path)
-            if response.status_code == requests.codes['ok']:
-                logger.info('Triggering log archiving [run=%s]', run_id)
-            else:
-                logger.warning('Log archiving failed [run=%s]', run_id)
+        start = run_once(start, unique_filter,
+                         remember_oldest, args.worker_base_url)
         time.sleep(args.archive_interval / 1000.0)
-        start = remember_oldest.next_start() or start
 
 
 if __name__ == '__main__':
