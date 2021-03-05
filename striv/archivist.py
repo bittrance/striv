@@ -5,6 +5,7 @@ import sys
 import time
 from argparse import ArgumentParser
 from datetime import datetime, timedelta, timezone
+from urllib3.util.retry import Retry
 
 import requests
 
@@ -51,6 +52,16 @@ parser.add_argument(
     help='One of DEBUG, INFO, WARNING or ERROR'
 )
 
+retry_strategy = Retry(
+    total=3,
+    status_forcelist=[429, 500, 501, 502, 503, 504],
+    backoff_factor=2
+)
+adapter = requests.adapters.HTTPAdapter(max_retries=retry_strategy)
+http = requests.Session()
+http.mount("https://", adapter)
+http.mount("http://", adapter)
+
 
 def start_from_max_age(max_age):
     start = datetime.now(timezone.utc) - timedelta(milliseconds=max_age)
@@ -61,7 +72,7 @@ def runs_since(base, start):
     '''Generator over all runs since start time.'''
     path = f'/runs?lower={start}'
     while True:
-        response = requests.get(base + path)
+        response = http.get(base + path)
         if response.status_code != requests.codes['ok']:
             raise RuntimeError(
                 f'Failed retrieving runs [start={start}, status={response.status_code}, body={response.text}]')
@@ -121,7 +132,7 @@ def run_once(start, unique_filter, remember_oldest, base_url):
     )
     for run_id, run in runs:
         path = f'/run/{run_id}/logs'
-        response = requests.get(base_url + path)
+        response = http.get(base_url + path)
         if response.status_code == requests.codes['ok']:
             logger.info(
                 'Triggering log archiving [run=%s. created=%s]',
