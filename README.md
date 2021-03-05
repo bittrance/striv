@@ -131,23 +131,100 @@ striv allows splitting the responsibility for operating the infrastructure from 
 
 striv leverages your orchestration system's native ability to run periodic ("cron") jobs, which means that striv itself need not impact your availability. Should you want to leverage striv REST APIs from your production environment, striv can be run in a resilient multi-node configuration.
 
-## Core concepts
+## Working with state
 
-### State
+In a typical setup, executions and dimensions are maintained in a Git repository. When a branch is merged to master, your CI/CD pipeline updates striv. Executions and dimensions can be expressed in jsonnet for flexibility and modularity.
 
-**execution**: An execution represents a job template for a particular target orchestration system (e.g. one Nomad cluster). The actual template is a jsonnet script and can thus be arbitrarily advanced. For example, sections can be conditional and values can be calculated from multiple parameters. The exact scope of a template depends on your containers. If you have managed to standardize your container invocation, you may get away with a single template. If you mount filesystems and require side cars, you probably need to have many templates and you may want to modularize your jsonnet. If you need manytemplates, you can use jsonnet functions to modularize your templates.
+### Executions
 
-**dimension**: A dimension represents some differentiator that can be used to categorize jobs. Typical dimensions might be customer, product and datacenter. A dimension has a list of possible values, each of which has its own key-value map of parameters. For example, you could have a `service_level` dimension with values "enterprise", "basic" and "free" each of which has parameters for scheduling priority and alerting strategy.
+An execution represents a job template for a particular target orchestration system (e.g. one Nomad cluster). The actual template is a jsonnet script and can thus be arbitrarily advanced. For example, sections can be conditional and values can be calculated from multiple parameters. The exact scope of a template depends on your containers. If you have managed to standardize your container invocation, you may get away with a single template. If you mount filesystems and require side cars, you probably need to have many templates and you may want to modularize your jsonnet. If you need many templates, you can use jsonnet functions to modularize your templates.
 
-### Batch Jobs
+```
+{
+  executions: {
+    <execution_id>: {
+      name: 'execution name',
+      driver: 'nomad',
+      logstore: 'nomad',
+      driver_config: {},
+      template: '...',
+      default_params: {},
+    }
+  }
+}
+```
+| Key | Value |
+|---|--|
+| **name** | Presentation name for this particular execution. |
+| **driver** | Write "nomad" for now. |
+| **driver_config** | parameters for configuring this driver. See below for details. |
+| **template** | A jsonnet string that evaluates to a template for the target orchestration system. You would typically write the templates as a separate file and use jsonnet `importstr` to load that file as a string without evaluating it. |
+| **default_params** | default configuration used when evaluating the template. |
+
+#### Nomad driver
+
+The "nomad" driver has the following `driver_config` parameters:
+
+| driver_config key | Value |
+|---|---|
+| **nomad_url** | The base URL for API calls to this Nomad cluster. No trailing slash. |
+| **nomad_token** | Token to pass via the `X-Nomad-Token` authentication header. When unset, no header is passed. |
+
+### Dimensions
+
+A dimension represents some differentiator that can be used to categorize jobs. Typical dimensions might be customer, product and datacenter. A dimension has a list of possible values, each of which has its own key-value map of parameters. For example, you could have a `service_level` dimension with values "enterprise", "basic" and "free" each of which has parameters for scheduling priority and alerting strategy.
+
+```
+{
+  dimensions: {
+    <dimension_id>: {
+      priority: <integer>,
+      values: {
+        <value_id>: {
+          params: {}
+        },
+        ...
+      }
+    },
+    ...
+  }
+}
+```
+| Key | Description |
+|--|--|
+| <dimension_id> | Id and presentation name for this dimension. |
+| priority | When merging parameter maps, dimensions are merged with lowest numbers first. |
+| values | Each key-value pair in this dictionary represents one possible selections for jobs assigned to this dimension. |
+| <value_id> | Id and presentation name for this values. |
+| params | Jobs assigned to this dimension value will be evaluated with these parameters. |
+
+### Parameters
+
+When you create or modify a job, striv will collect parameters from three different sources:
+
+1. Execution `default_params`,
+1. Each dimension value the job is assigned to, in priority order, and
+1. Job-specific parameters.
+
+These parameter maps are merged into a single parameter map, which is used to evaluate the execution template. Parameter values can be either a string or an object.
+
+Dots in parameter keys are treated specially. A parameter map `{"some.key": "value"}` will be converted to `{"some": {"key": "value"}}` when preparing for evaluation. This is very useful to handle environment variables:
+
+1. In your execution, you set `default_params: { env: {} }`,
+1. On your dimension, add a parameter like `env.LOG_LEVEL: "DEBUG"`, and
+1. In your templates, you set `Env: params.env`.
+
+On evaluation, this will result in `"Env": {"LOG_LEVEL": "DEBUG"}`. If you omit step 2 above, this will be `"Env": {}`.
+
+Parameter values are treated verbatim, unless they are objects and contain the key `_striv_type`. There is currently one known type: `secret`. For more information see the section on Secrets.
+
+### Working with jobs
+
+For simple scenarios, jobs are created manually using the web ui. For more advanced setups, jobs can be maintained programmatically via the REST API from some other source, e.g. a CRM system.
 
 **job**: A job represents a job/service/task in one of the supported oechestration systems. A job is configured by linking it to one or more dimension values. Each value comes with a parameter map. When creating a job, all the job's parameter maps are merged to create a single parameter map which is then used to instantiate the template. The job can also override values.
 
 **run**: A run represents a single execution of a job. For most jobs, striv will automatically detect when the job has been executed by the orchestration system. If the job template supports it, it is also possible to perform a manual run (e.g. rerun the job).
-
-### Separation of responsibility
-
-In a typical setup, executions and dimensions are maintained in a Git repository. When a branch is merged to master, your CI/CD pipeline updates striv. Executions and dimensions can be expressed in jsonnet for flexibility and modularity. For simple scenarios, jobs are created manually using the web ui. For more advanced setups, jobs can be maintained programmatically via the REST API from some other source, e.g. a CRM system.
 
 ## Configuring
 
