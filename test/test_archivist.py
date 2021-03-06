@@ -1,5 +1,7 @@
+import threading
+import time
+
 import pytest
-from requests import status_codes
 import requests_mock
 
 from hamcrest import *  # pylint: disable = unused-wildcard-import
@@ -133,3 +135,24 @@ class TestRunOnce:
         new_start = archivist.run_once(start, unique_filter,
                                        remember_oldest, 'http://localhost')
         assert new_start == '2020-10-31T23:40:02+0000'
+
+
+@pytest.mark.usefixtures('striv_with_runs')
+class TestRun:
+    def test_running(self, striv):
+        args = utils.Args(
+            max_age=10,
+            worker_base_url='http://localhost',
+            archive_interval=150,
+        )
+        running = set([True])
+        t = threading.Thread(
+            target=archivist.run,
+            args=(args, running),
+            daemon=True
+        )
+        t.start()
+        time.sleep(0.1)
+        running.pop()
+        t.join(0.1)
+        assert len(striv.request_history) == 3

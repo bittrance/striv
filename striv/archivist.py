@@ -152,7 +152,7 @@ def run_once(start, unique_filter, remember_oldest, base_url):
     return start
 
 
-def run(args):
+def run(args, running=set([True])):
     start = start_from_max_age(args.max_age)
     unique_filter = UniqueFinishedRuns()
     remember_oldest = OldestUnfinishedRun()
@@ -162,7 +162,7 @@ def run(args):
         start,
         args.archive_interval
     )
-    while True:
+    while running:
         start = run_once(start, unique_filter,
                          remember_oldest, args.worker_base_url)
         time.sleep(args.archive_interval / 1000.0)
