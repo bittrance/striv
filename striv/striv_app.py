@@ -354,13 +354,16 @@ def get_run(run_id):
 @app.get('/run/:run_id/logs')
 def get_run_log(run_id):
     '''
-    Returns a dict with log streams.
+    Returns a dict with log stream tails. Pass max_size to control size of tail.
     '''
+    kwargs = {}
+    if 'max_size' in request.query:
+        kwargs['max_size'] = int(request.query['max_size'])
     run = app.store.load_entities(('run', run_id))[0]
     execution = app.store.load_entities(('execution', run['execution']))[0]
     logstore = app.logstores[execution['logstore']]
     try:
-        return logstore.fetch_logs(execution['driver_config'], run_id)
+        return logstore.fetch_logs(execution['driver_config'], run_id, run, **kwargs)
     except errors.RunNotFound as err:
         return HTTPResponse(
             status=410,
@@ -416,6 +419,15 @@ def load_state():
 parser = ArgumentParser(
     description='Start striv with auto reload and debug')
 parser.add_argument(
+    '--archive-config',
+    type=json.loads,
+    default=os.environ.get(
+        'STRIV_WITH_ARCHIVE',
+        None
+    ),
+    help='Striv maintains its own archive of observed log files'
+)
+parser.add_argument(
     '--encryption-key',
     default=os.environ.get(
         'STRIV_ENCRYPTION_KEY',
@@ -462,6 +474,24 @@ def configure_encryption(app, private_key_pem):
         lambda v: '<redacted>'
 
 
+def configure_logstores(app, archive_config):  # pylint: disable = import-outside-toplevel
+    from striv import nomad_logstore
+    if archive_config:
+        typ = archive_config['type']
+        if typ == 'file':
+            from striv.archivers import file
+            file.setup(nomad_logstore, archive_config)
+            app.logstores['nomad'] = file
+        elif typ == 's3':
+            from striv.archivers import s3
+            s3.setup(nomad_logstore, archive_config)
+            app.logstores['nomad'] = s3
+        else:
+            raise RuntimeError('Unknown archive type %s' % typ)
+    else:
+        app.logstores['nomad'] = nomad_logstore
+
+
 def configure(app, args):
     logger.setLevel(args.log_level)
     app.apply_value_parsers = {
@@ -469,10 +499,10 @@ def configure(app, args):
     }
     app.evaluate_value_parsers = app.apply_value_parsers.copy()
     configure_encryption(app, args.encryption_key)
-    from striv import nomad_backend, nomad_logstore, rdbm_store  # pylint: disable = import-outside-toplevel
+    from striv import nomad_backend, rdbm_store  # pylint: disable = import-outside-toplevel
     app.store = rdbm_store
     app.backends['nomad'] = nomad_backend
-    app.logstores['nomad'] = nomad_logstore
+    configure_logstores(app, args.archive_config)
     app.store.setup(
         args.store_type,
         json.loads(args.store_config),

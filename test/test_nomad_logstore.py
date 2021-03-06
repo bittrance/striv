@@ -28,7 +28,7 @@ def nomad():
 def test_fetch_logs_returns_all_log_streams(logstore, nomad):
     nomad.get(ALLOC_ENDPOINT, json=nomad_allocs.running_alloc)
     nomad.get(LOGS_ENDPOINT, text='ze-log')
-    assert logstore.fetch_logs(DRIVER_CONFIG, 'alloc-2') == {
+    assert logstore.fetch_logs(DRIVER_CONFIG, 'alloc-2', {}) == {
         'task-1/stderr': 'ze-log',
         'task-1/stdout': 'ze-log',
     }
@@ -37,7 +37,7 @@ def test_fetch_logs_returns_all_log_streams(logstore, nomad):
 def test_fetch_logs_raises_not_found_on_unknown_alloc(logstore, nomad):
     nomad.get(ALLOC_ENDPOINT, status_code=404)
     assert_that(
-        calling(logstore.fetch_logs).with_args(DRIVER_CONFIG, 'alloc-2'),
+        calling(logstore.fetch_logs).with_args(DRIVER_CONFIG, 'alloc-2', {}),
         raises(errors.RunNotFound)
     )
 
@@ -47,9 +47,15 @@ def test_fetch_logs_skips_missing_streams(logstore, nomad):
     nomad.get(LOGS_ENDPOINT + '?type=stderr', status_code=400, text='boom!')
     nomad.get(LOGS_ENDPOINT + '?type=stdout', text='ze-log')
     assert_that(
-        logstore.fetch_logs(DRIVER_CONFIG, 'alloc-2'),
+        logstore.fetch_logs(DRIVER_CONFIG, 'alloc-2', {}),
         has_entries({
             'task-1/stderr': matches_regexp('boom!'),
             'task-1/stdout': 'ze-log',
         })
     )
+
+
+def test_fetch_only_max_size(logstore, nomad):
+    nomad.get(ALLOC_ENDPOINT, json=nomad_allocs.running_alloc)
+    nomad.get(LOGS_ENDPOINT + '?offset=10', text='ze-log')
+    logstore.fetch_logs(DRIVER_CONFIG, 'alloc-2', {}, max_size=10),
