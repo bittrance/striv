@@ -413,7 +413,7 @@ class TestGetRunLog:
         logstore.logs = {'run-1/stderr': 'ze-logs'}
         app.get('/run/run-1/logs')
         assert logstore.actions == [
-            ('fetch_logs', {'some': 'config'}, 'run-1', A_RUN)
+            ('fetch_logs', {'some': 'config'}, 'run-1', A_RUN, {})
         ]
 
     def test_returns_logs(self, app, logstore):
@@ -425,6 +425,14 @@ class TestGetRunLog:
         logstore.logs = errors.RunNotFound('boom!')
         response = app.get('/run/run-1/logs', status=410)
         assert response.json['detail'] == 'boom!'
+
+    def test_propagates_max_size(self, app, logstore):
+        logstore.logs = {'run-1/stderr': 'ze-logs'}
+        app.get('/run/run-1/logs?max_size=10')
+        assert logstore.actions == [
+            ('fetch_logs', {'some': 'config'},
+             'run-1', A_RUN, {'max_size': 10})
+        ]
 
 
 @pytest.mark.usefixtures('basicdb')

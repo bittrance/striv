@@ -12,6 +12,12 @@ def _is_done(run):
     return run['status'] in ['failed', 'successful']
 
 
+def _trim_logs(logs, max_size):
+    for k in logs:
+        logs[k] = logs[k][:max_size]
+    return logs
+
+
 def setup(child_logstore, archive_config):
     global bucket, logstore, s3
     bucket = archive_config['s3_archive_bucket']
@@ -19,12 +25,12 @@ def setup(child_logstore, archive_config):
     s3 = boto3.client('s3')
 
 
-def fetch_logs(driver_config, run_id, run):
+def fetch_logs(driver_config, run_id, run, max_size=None):
     key = f'{run_id}'
     if _is_done(run):
         try:
             response = s3.get_object(Bucket=bucket, Key=key)
-            return json.load(response['Body'])
+            return _trim_logs(json.load(response['Body']), max_size)
         except botocore.exceptions.ClientError as exc:
             if exc.response['Error']['Code'] != 'NoSuchKey':
                 raise exc
@@ -35,4 +41,4 @@ def fetch_logs(driver_config, run_id, run):
             Key=key,
             Body=json.dumps(logs).encode('utf-8')
         )
-    return logs
+    return _trim_logs(logs, max_size)

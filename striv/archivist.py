@@ -131,7 +131,7 @@ def run_once(start, unique_filter, remember_oldest, base_url):
         )
     )
     for run_id, run in runs:
-        path = f'/run/{run_id}/logs'
+        path = f'/run/{run_id}/logs?max_size=0'
         response = http.get(base_url + path)
         if response.status_code == requests.codes['ok']:
             logger.info(

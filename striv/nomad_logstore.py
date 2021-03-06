@@ -8,7 +8,7 @@ def _endpoint(driver_config, path):
     return '%s/%s' % (driver_config['nomad_url'], path)
 
 
-def fetch_logs(driver_config, run_id, run):
+def fetch_logs(driver_config, run_id, run, max_size=64000):
     '''
     Retrieve the log for a run.
     '''
@@ -26,7 +26,7 @@ def fetch_logs(driver_config, run_id, run):
                 'task': task,
                 'type': typ,
                 'origin': 'end',
-                'offset': 64000,
+                'offset': max_size,
                 'plain': 'true'
             }
         )

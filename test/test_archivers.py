@@ -38,8 +38,19 @@ class ArchiverContract:
     def test_delegating_to_upstream(self, subject, upstream, driver_config, successful_run):
         subject.fetch_logs(driver_config, 'ze-id', successful_run)
         assert upstream.actions == [(
-            'fetch_logs', driver_config, 'ze-id', successful_run
+            'fetch_logs', driver_config, 'ze-id', successful_run, {}
         )]
+
+    def test_does_not_pass_max_size_upstream(self, subject, upstream, driver_config, successful_run):
+        subject.fetch_logs(driver_config, 'ze-id', successful_run, max_size=1)
+        assert upstream.actions == [(
+            'fetch_logs', driver_config, 'ze-id', successful_run, {}
+        )]
+
+    def test_enforces_max_size(self, subject, upstream, driver_config, successful_run):
+        logs = subject.fetch_logs(
+            driver_config, 'ze-id', successful_run, max_size=1)
+        assert logs == {'some': 'l'}
 
     def test_caches_upstream_completed_runs(self, subject, upstream, driver_config, successful_run):
         subject.fetch_logs(driver_config, 'ze-id', successful_run)

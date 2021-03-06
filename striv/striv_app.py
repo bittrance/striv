@@ -354,13 +354,16 @@ def get_run(run_id):
 @app.get('/run/:run_id/logs')
 def get_run_log(run_id):
     '''
-    Returns a dict with log streams.
+    Returns a dict with log stream tails. Pass max_size to control size of tail.
     '''
+    kwargs = {}
+    if 'max_size' in request.query:
+        kwargs['max_size'] = int(request.query['max_size'])
     run = app.store.load_entities(('run', run_id))[0]
     execution = app.store.load_entities(('execution', run['execution']))[0]
     logstore = app.logstores[execution['logstore']]
     try:
-        return logstore.fetch_logs(execution['driver_config'], run_id, run)
+        return logstore.fetch_logs(execution['driver_config'], run_id, run, **kwargs)
     except errors.RunNotFound as err:
         return HTTPResponse(
             status=410,

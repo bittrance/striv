@@ -27,8 +27,8 @@ class RecordingLogstore:
         self.actions = []
         self.logs = {}
 
-    def fetch_logs(self, driver_config, run_id, run):
-        self.actions.append(('fetch_logs', driver_config, run_id, run))
+    def fetch_logs(self, driver_config, run_id, run, **kwargs):
+        self.actions.append(('fetch_logs', driver_config, run_id, run, kwargs))
         if isinstance(self.logs, Exception):
             raise self.logs  # pylint: disable = raising-bad-type
         return self.logs

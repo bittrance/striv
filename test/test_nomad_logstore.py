@@ -53,3 +53,9 @@ def test_fetch_logs_skips_missing_streams(logstore, nomad):
             'task-1/stdout': 'ze-log',
         })
     )
+
+
+def test_fetch_only_max_size(logstore, nomad):
+    nomad.get(ALLOC_ENDPOINT, json=nomad_allocs.running_alloc)
+    nomad.get(LOGS_ENDPOINT + '?offset=10', text='ze-log')
+    logstore.fetch_logs(DRIVER_CONFIG, 'alloc-2', {}, max_size=10),

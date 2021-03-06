@@ -122,8 +122,8 @@ class TestRunOnce:
                            remember_oldest, 'http://localhost')
         assert [
             'http://localhost/runs?lower=2020-10-31T23:40:00+0000',
-            'http://localhost/run/run-2/logs',
-            'http://localhost/run/run-3/logs'
+            'http://localhost/run/run-2/logs?max_size=0',
+            'http://localhost/run/run-3/logs?max_size=0'
         ] == [r.url for r in striv.request_history]
 
     def test_prunes_finished_runs(self, start, unique_filter, remember_oldest):
