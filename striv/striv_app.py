@@ -479,13 +479,13 @@ def configure_logstores(app, archive_config):  # pylint: disable = import-outsid
     if archive_config:
         typ = archive_config['type']
         if typ == 'file':
-            from striv import file_archiver
-            file_archiver.setup(nomad_logstore, archive_config)
-            app.logstores['nomad'] = file_archiver
+            from striv.archivers import file
+            file.setup(nomad_logstore, archive_config)
+            app.logstores['nomad'] = file
         elif typ == 's3':
-            from striv import s3_archiver
-            s3_archiver.setup(nomad_logstore, archive_config)
-            app.logstores['nomad'] = s3_archiver
+            from striv.archivers import s3
+            s3.setup(nomad_logstore, archive_config)
+            app.logstores['nomad'] = s3
         else:
             raise RuntimeError('Unknown archive type %s' % typ)
     else:

@@ -3,7 +3,7 @@ import moto
 import pytest
 
 from . import utils
-from striv import file_archiver, s3_archiver
+from striv.archivers import file, s3
 
 example_logs = {'some': 'log'}
 
@@ -78,14 +78,14 @@ class TestS3Archiver(ArchiverContract):
                     'LocationConstraint': 'us-west-2'
                 }
             )
-            s3_archiver.setup(upstream, {
+            s3.setup(upstream, {
                 's3_archive_bucket': 'test-bucket',
             })
-            yield s3_archiver
+            yield s3
 
 
 class TestFileArchiver(ArchiverContract):
     @pytest.fixture
     def subject(self, upstream, tmpdir):
-        file_archiver.setup(upstream, {'archive_dir': tmpdir})
-        yield file_archiver
+        file.setup(upstream, {'archive_dir': tmpdir})
+        yield file
