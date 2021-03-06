@@ -1,0 +1,46 @@
+name: Test
+on:
+  push:
+    branches-ignore:
+      - master
+jobs:
+  test:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Cache node modules
+        uses: actions/cache@v2
+        with:
+          path: ~/.npm
+          key: striv-npm-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: striv-npm-
+      - name: Cache pip
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: striv-pip-${{ hashFiles('requirements*.txt') }}
+          restore-keys: striv-pip-
+      - uses: actions/setup-node@v2-beta
+        with:
+          node-version: "15.3"
+      - name: Test frontend
+        run: |
+          npm install
+          npm run test:unit
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.7"
+      - name: Test backend
+        run: |
+          docker-compose up &
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          for s in 5 5 5 5 5 5 ; do nc -z 127.0.0.1 3306 && break ; echo "Sleeping $s sec" ; sleep $s ; done
+          nc -z 127.0.0.1 5432 || exit 1
+          pytest test/
+          docker-compose down
+      - name: Test buiding Docker image
+        run: |
+          npm run build
+          docker build -t bittrance/striv .
