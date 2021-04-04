@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: testing-databases
+spec:
+  ports:
+    - name: mysql
+      port: 3306
+      targetPort: mysql
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+  selector:
+    app: testing-databases
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: testing-databases
+  labels:
+    app: testing-databases
+spec:
+  containers:
+    - name: mysql
+      image: mysql:5.6
+      ports:
+        - name: mysql
+          containerPort: 3306
+      env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: Cmdu1OG2vLfL
+        - name: MYSQL_DATABASE
+          value: striv
+      resources:
+        limits:
+          cpu: 125m
+          memory: 256Mi
+    - name: postgres
+      image: postgres:11
+      ports:
+        - name: postgres
+          containerPort: 5432
+      env:
+        - name: POSTGRES_USER
+          value: striv
+        - name: POSTGRES_PASSWORD
+          value: Cmdu1OG2vLfL
+      resources:
+        limits:
+          cpu: 125m
+          memory: 256Mi

@@ -1,3 +1,4 @@
+import json
 import os
 import uuid
 
@@ -29,6 +30,9 @@ configurations = [
         }
     ],
 ]
+
+if os.path.exists('./testing-databases.json'):
+    configurations = json.load(open('./testing-databases.json'))
 
 filtered_stores = os.environ.get('STORES')
 if filtered_stores:
