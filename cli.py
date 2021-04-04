@@ -22,7 +22,7 @@ def decrypt_value(args):
 
 def encrypt_value(args):
     return json.dumps({
-        'type': 'secret',
+        '_striv_type': 'secret',
         'encrypted': crypto.encrypt_value(
             args.public_key,
             args.cleartext
