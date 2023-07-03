@@ -40,7 +40,8 @@ jobs:
           nc -z 127.0.0.1 5432 || exit 1
           pytest test/
           docker-compose down
-      - name: Test buiding Docker image
+      - name: Test buiding Docker images
         run: |
           npm run build
           docker build -t bittrance/striv .
+          docker build -t bittrance/striv-tools .

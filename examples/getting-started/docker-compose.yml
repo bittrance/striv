@@ -1,0 +1,85 @@
+version: "3.5"
+services:
+  striv:
+    image: bittrance/striv:latest
+    ports:
+      - 127.0.0.1:8080:8080
+    environment:
+      STRIV_ENCRYPTION_KEY: |
+        -----BEGIN PRIVATE KEY-----
+        MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDITNK9rK5+4e2i
+        dWmhKDnKoVnDMyYiZlIzjdzYUBA9mXJHmCTwumJTfcoEhdtHYVBbNJQYN1WamZSL
+        GmWSiueNdTf7NwRiNR3T8nZ81eNy0a+ey21TPp9Abwr9wbwoTxWcwv1ALb4cXLsH
+        iqETiTuICo9YnFy+kgm0STQXO/7hjcaDvd0gnXIJFGhLkAPjoGfKD+ildjedhpBx
+        yfFF4u3vgMgLJW3FjUbsyBSHxUE+TPNivbnZGB2Hz/szmj4XKiJdL7PwTzf895Sl
+        zCsqJ3qE7ytm1K3tUvjVJhLKof/VycBWvkdiDjpWe8OnhcPwhx3xFXkKmL7hfM7d
+        LFU6kkLPAgMBAAECggEAaQ0BqkEa86kCvSXfVIqIZOHi9iGpanlHu4o3vaugGO6V
+        pT8CgM8AKtHaVizuKK29O1iEI39CAmdyJNKfWxBHCUXlKnhccDVzg2mzAx4awGmB
+        NkNy/ynk1CJpHVWynWF88E7EDBjxkGaCIR5wBJMBCgSf0dWQPtLRDCEolNb+gsSt
+        iWTYTyYBUV3jeUfrLMWxp21l3LkQBL8sQ6EGYbOQWjjtE+pTC2Kq3ww6ZwOSFpcM
+        xOqiWlvdNKgZrRby+O8hUbaEVTANU8Z3yZ7xGYrm6xUyrBhJwKK3PWd3ao7o0wWJ
+        zawOdEpTqHPvSGZBdYoHs9FImnonC97BrcbcWNWOoQKBgQD/hkGdxcUP3WWuHulD
+        FJQKv5RXrDGKy+/Fxu4zLOi1VuMB1ZC5IZzNHpoUyB+fZAoy+RPvwkhA48EOEH6A
+        ebDIQSCfq8LEACheFmI2K2ldi73AvSrkWcTiUvXqFw8/3M+ZSr/I/0BKJCXmx3Fy
+        LP1cI/As8PZ+okgRlH8F4W96cwKBgQDIrEFlbb7oeeviIZpqf0J6FFnNfp+2hG9A
+        JR0mcAOmVd+W3TGBzZNM5YNmp57FncZvh093aOa+wYM3OF/+NFLQhnnd/VBYMXPv
+        RJ3N2F70gGMJWnwSvOcEXVDN+H5vwkqz/0n8IlRUN2cseemGUWFSCfkVUKN2CR7j
+        +rVHP0MzNQKBgCiwdFpvV8YC92IWwgZQjJJ5l2GupeT4PKI930h+6j+WKmfsXjNc
+        yt9O9DJC++YhxA4B487WHTNYETHwJnTG7AO3ez5x133mmIcDAXimyQyAaCL8/IuI
+        T/XKSCaSrXb57oT2hju3icFEqFRrhgEscNvvTRua82WO6fMCtod1Mo9JAoGBAKD5
+        bUxMCQS8KPixNAmSJGWBxbgOh1gGTKgMHaIj4QmhgUaoEXqqyiq5QfsrIzYrJm94
+        /8ouIEuNOBEn6/kjR/t2pHPrLHRS10lspZnmo+VGyCtMppLxbfAWWyee2u4T0ZEq
+        jNLxRux3tQ/8i9PvnD4POfxbP4UEM/91sc2BdgqxAoGBANNbk712KwkxIiRwdAS8
+        FxwElkioPPwPf+LvUT8wlppA9njZaGVKIJHVXzTKLRo46t5szIpdMaG22YXaaN1V
+        iHq9cAdnMRdoSZYNs2a/lmzUHbZ/WJ9lpdgFCNITZqxpWo9Oyd2cVdQJOkSqenQl
+        7ZYMeYZ11UusIN73sbMW8yVd
+        -----END PRIVATE KEY-----
+      STRIV_STORE_TYPE: postgres
+      STRIV_STORE_CONFIG: |
+        {
+          "host": "postgres",
+          "user": "striv",
+          "password": "ivKjup0iQOMs",
+          "database": "striv"
+        }
+      STRIV_WITH_ARCHIVE: |
+        {
+          "type": "file",
+          "archive_dir": "/tmp"
+        }
+      STRIV_LOG_LEVEL: DEBUG
+  postgres:
+    image: postgres:11
+    ports:
+      - 127.0.0.1:5432:5432
+    environment:
+      POSTGRES_USER: striv
+      POSTGRES_PASSWORD: ivKjup0iQOMs
+  nomad:
+    image: nvxx/nomad:v1.0.4
+    command: agent -dev -bind=0.0.0.0
+    privileged: true
+    environment:
+      NOMAD_DATA_DIR: /opt/nomad
+    ports:
+      - 127.0.0.1:4646:4646
+    volumes:
+      - "/var/tmp:/opt/nomad"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "/tmp:/tmp"
+  refresher:
+    image: bittrance/striv-tools:latest
+    command: /striv/striv/refresh.py
+    restart: on-failure
+    environment:
+      STRIV_WORKER_BASE_URL: http://striv:8080
+      STRIV_LOG_LEVEL: DEBUG
+      STRIV_REFRESH_INTERVAL: 10000
+  archivist:
+    image: bittrance/striv-tools:latest
+    command: /striv/striv/archivist.py
+    restart: on-failure
+    environment:
+      STRIV_WORKER_BASE_URL: http://striv:8080
+      STRIV_LOG_LEVEL: DEBUG
+      STRIV_ARCHIVE_INTERVAL: 10000

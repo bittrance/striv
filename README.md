@@ -6,14 +6,14 @@ striv promises simple and devops-friendly batch job operation on top of Hashicor
 
 ## Getting started
 
-The easiest way to get started is using the included Docker Compose:
+The easiest way to get started is using the included Docker Compose file:
 ```
-wget https://raw.githubusercontent.com/bittrance/striv/master/docker-compose.yml
-docker-compose up -d
+wget https://raw.githubusercontent.com/bittrance/striv/master/examples/getting-started/docker-compose.yml
+docker-compose -p striv up
 ```
-This will start a striv, postgresql, nomad and supporting services on the latest released version of striv. Nomad will mount your Docker socket so as to be able to run containers. striv is available on http://localhost:8080, with no authentication.
+This will start a striv, postgresql, nomad and supporting services on the latest released version of striv. Nomad will mount your Docker socket so as to be able to run containers. striv is available on http://localhost:8080, with no authentication. **This setup contains hard-coded credentials and a Nomad, do don't run it in production!**
 
-There are various [examples](https://github.com/bittrance/striv/src/master/example) to inspire you, but let's start a template from scratch. First we need an execution. Let's create a file called `hello-world.jsonnet`:
+Let's start a template from scratch. First we need an execution. Let's create a state file called `hello-world.jsonnet`:
 ```jsonnet
 {
   executions: {
@@ -21,12 +21,13 @@ There are various [examples](https://github.com/bittrance/striv/src/master/examp
       name: 'Hello World',
       // We are talking to a Nomad cluster
       driver: 'nomad',
+      logstore: 'nomad',
       driver_config: {
         // since both striv and nomad are in the same Docker Compose file, striv can use the service name to refer to Nomad.
         nomad_url: 'http://nomad:4646'
       },
       // The actual template is a jsonnet snippet stored as a JSON string. We could write it inline, but it would be hard to read, particularly as JSON has no multi-line strings. Instead, we import it from a separate file.
-      template: importstr './nomad_job.jsonnet'
+      payload_template: importstr './nomad_job.jsonnet',
       // These are default values for the params in your template
       default_params: {
         greeting: 'World'
@@ -42,8 +43,8 @@ Now we need to create the actual template `nomad_job.jsonnet`. This is an ordina
   Name: 'greeter',
   Datacenters: ['dc1'],
   Periodic: {
-    // Run this job every 5 minutes.
-    Spec: "*/5 * * * * *",
+    // Run this job every minute.
+    Spec: "*/1 * * * * *",
   },
   TaskGroups: [
     {
@@ -58,7 +59,7 @@ Now we need to create the actual template `nomad_job.jsonnet`. This is an ordina
             args: ['-c', 'echo Hello ' + params.greeting],
           },
           Driver: 'docker',
-          Name: 'task1',
+          Name: 'greeter',
           Resources: {
             CPU: 500,
             MemoryMB: 256
@@ -69,20 +70,20 @@ Now we need to create the actual template `nomad_job.jsonnet`. This is an ordina
   ],
 }
 ```
-We can now load this state into striv. This replaces all your existing executions, and there is currently no validation against existing jobs, so please make sure you are addressing the right striv.
+We can now load this state file into striv. This replaces all your existing executions, and there is currently no validation against existing jobs, so please make sure you are addressing the right striv.
 
 ```bash
-striv-cli --striv-url http://localhost:8080 load-state ./hello-world.jsonnet
+docker run -v $PWD:/getting-started --network striv bittrance/striv-tools /striv/cli.py --striv-url http://striv:8080 load-state /getting-started/hello-world.jsonnet
 ```
 We can now open a browser and create a new job.
 
-TBD: Screenshot
+![New Job View](docs/images/new-job.png)
 
-If you wait a few minutes, Nomad will have run the job, and we can inspect the log file.
+If you wait a minute, Nomad will have run the job, and we can inspect the log file. (The UI does not currently refresh, so you may want to ctrl+r.)
 
-TBD: Screenshot
+![Successful Run View](docs/images/successful-run.png)
 
-In order to widen the appeal of our offering, we want to introduce a separate greeting. 
+Our greeting service works well on Earth, but market research indicates that it does not go down so well on other celestial bodies. We can use a dimension to allow choosing different, pre-defined greeting phrases. Extend `hello-world.jsonnet` with a dimension definition:
 
 ```jsonnet
 {
@@ -90,15 +91,18 @@ In order to widen the appeal of our offering, we want to introduce a separate gr
     // Same as above
   },
   dimensions: {
-    greeting: {
-      world: {
-        values: {
-          greeting: 'Terra'
-        }
-      },
-      moon: {
-        values: {
-          greeting: 'Luna'
+    audience: {
+      priority: 1,
+      values: {
+        world: {
+          params: {
+            greeting: 'Terra'
+          }
+        },
+        moon: {
+          params: {
+            greeting: 'Luna'
+          }
         }
       }
     }
@@ -107,15 +111,17 @@ In order to widen the appeal of our offering, we want to introduce a separate gr
 ```
 We reload the state:
 ```bash
-striv-cli --striv-url http://localhost:8080 load-state ./hello-world.jsonnet
+docker run -v $PWD:/getting-started --network striv bittrance/striv-tools /striv/cli.py --striv-url http://striv:8080 load-state /getting-started/hello-world.jsonnet
 ```
 We can update the job in the browser to add the job to the "greeting" dimension.
 
-TBD: Screenshot
+![Modify Job to dimension](docs/images/modify-job-with-dimensions.png)
 
 A few minutes later, we can inspect the log file of the latest run.
 
-TBD: Screenshot
+![Successful run with dimension](docs/images/run-with-dimension.png)
+
+Neat, eh?
 
 ## Rationale
 
@@ -241,3 +247,16 @@ The following stores are available:
 }'
 ```
 Striv will not prune archived logs for you; you will need to set up an administrative routine to remove sufficiently old logs.
+striv-cli encrypt-value
+```
+This can then be inserted into your executions and dimensions:
+```jsonnet
+{
+  dimensions: {
+    environment: {
+      production: {
+        values: {
+          mysql_password: {
+            type: "secret",
+            encrypted: "..."
+          

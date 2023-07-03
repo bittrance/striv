@@ -185,7 +185,7 @@ def index():
     return static_file('index.html', root='dist')
 
 
-@app.get('/<path:re:(css/|js/|favicon.ico).*>')
+@app.get('/<path:re:(css/|js/|.*\.png|favicon.ico).*>')
 def static_files(path):
     return static_file(path, root='dist')
 

@@ -1,15 +1,10 @@
 #!/usr/bin/env python3
 
-import base64
 import json
 import sys
 from argparse import ArgumentParser
 import _jsonnet
 import requests
-from cryptography.fernet import Fernet
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
 from striv import crypto
 
@@ -27,7 +22,7 @@ def decrypt_value(args):
 
 def encrypt_value(args):
     return json.dumps({
-        'type': 'secret',
+        '_striv_type': 'secret',
         'encrypted': crypto.encrypt_value(
             args.public_key,
             args.cleartext
